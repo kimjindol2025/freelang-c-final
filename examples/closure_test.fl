@@ -1,0 +1,124 @@
+// Phase 7-F: Closure Testing & Validation Examples
+
+// ============================================================================
+// Test 1: Simple Closure with Captured Variable
+// ============================================================================
+println("=== Test 1: Simple Closure ===");
+let x = 10;
+let closure1 = fn() {
+    return x + 5;
+};
+println(closure1());  // Expected: 15
+
+// ============================================================================
+// Test 2: Closure with Parameter and Captured Variable
+// ============================================================================
+println("\n=== Test 2: Closure with Parameter ===");
+let multiplier = 3;
+let closure2 = fn(n) {
+    return n * multiplier;
+};
+println(closure2(4));  // Expected: 12
+println(closure2(7));  // Expected: 21
+
+// ============================================================================
+// Test 3: Nested Closures (Closure Returning Closure)
+// ============================================================================
+println("\n=== Test 3: Nested Closure ===");
+fn makeAdder(x) {
+    return fn(y) {
+        return x + y;
+    };
+}
+let add5 = makeAdder(5);
+println(add5(3));   // Expected: 8
+println(add5(10));  // Expected: 15
+
+// ============================================================================
+// Test 4: Closure with Array
+// ============================================================================
+println("\n=== Test 4: Closure with Array ===");
+let arr = [1, 2, 3, 4, 5];
+let getSum = fn() {
+    let sum = 0;
+    let i = 0;
+    while (i < arr.len) {
+        sum = sum + arr[i];
+        i = i + 1;
+    }
+    return sum;
+};
+println(getSum());  // Expected: 15
+
+// ============================================================================
+// Test 5: Multiple Independent Closures
+// ============================================================================
+println("\n=== Test 5: Multiple Closures ===");
+let counter1 = 0;
+let inc1 = fn() {
+    counter1 = counter1 + 1;
+    return counter1;
+};
+
+let counter2 = 100;
+let inc2 = fn() {
+    counter2 = counter2 + 1;
+    return counter2;
+};
+
+println(inc1());  // 1
+println(inc2());  // 101
+println(inc1());  // 2
+println(inc2());  // 102
+
+// ============================================================================
+// Test 6: Closure with Complex Logic
+// ============================================================================
+println("\n=== Test 6: Complex Closure ===");
+let threshold = 10;
+let numbers = [5, 8, 12, 15, 3, 20, 7];
+let countAboveThreshold = fn() {
+    let count = 0;
+    let i = 0;
+    while (i < numbers.len) {
+        if (numbers[i] > threshold) {
+            count = count + 1;
+        }
+        i = i + 1;
+    }
+    return count;
+};
+println(countAboveThreshold());  // Expected: 3 (12, 15, 20)
+
+// ============================================================================
+// Test 7: Closure as Return Value from Function
+// ============================================================================
+println("\n=== Test 7: Closure as Return Value ===");
+fn createMultiplier(factor) {
+    return fn(x) {
+        return x * factor;
+    };
+}
+let double = createMultiplier(2);
+let triple = createMultiplier(3);
+println(double(5));  // 10
+println(triple(5));  // 15
+
+// ============================================================================
+// Test 8: Closure with Multiple Captured Variables
+// ============================================================================
+println("\n=== Test 8: Multiple Captured Variables ===");
+let base = 10;
+let offset = 5;
+let compute = fn(x) {
+    return (x + offset) * base;
+};
+println(compute(1));  // (1 + 5) * 10 = 60
+println(compute(2));  // (2 + 5) * 10 = 70
+
+// ============================================================================
+// Summary
+// ============================================================================
+println("\n════════════════════════════════");
+println("✅ All Closure Tests Complete");
+println("════════════════════════════════");

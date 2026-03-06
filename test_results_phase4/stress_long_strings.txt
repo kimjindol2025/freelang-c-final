@@ -1,0 +1,13 @@
+[DEBUG] Executing file: test_results_phase4/stress_long_strings.fl
+[RUNTIME] Step 1: Creating lexer
+[RUNTIME] lexer created: 0x61bd1df12790
+[RUNTIME] Step 2: Creating parser (token_count=11)
+[RUNTIME] parser created: 0x61bd1df129a0
+[RUNTIME] Calling fl_parser_parse...
+[RUNTIME] fl_parser_parse returned: ast=0x7be74ccbcad8
+[RUNTIME] compiling AST to bytecode...
+[RUNTIME] compile result: chunk=0x61bd1df12a50 code_len=26
+[VM] HALT reached, returning
+[DEBUG] Execution complete
+[DEBUG] No errors detected
+This is a longer string to test string handling in the runtime

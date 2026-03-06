@@ -1,0 +1,13 @@
+[DEBUG] Executing file: examples/hello_world.fl
+[RUNTIME] Step 1: Creating lexer
+[RUNTIME] lexer created: 0x585db75f3790
+[RUNTIME] Step 2: Creating parser (token_count=11)
+[RUNTIME] parser created: 0x585db75f3970
+[RUNTIME] Calling fl_parser_parse...
+[RUNTIME] fl_parser_parse returned: ast=0x7ef032eb9ad8
+[RUNTIME] compiling AST to bytecode...
+[RUNTIME] compile result: chunk=0x585db75f39f0 code_len=26
+[VM] HALT reached, returning
+[DEBUG] Execution complete
+[DEBUG] No errors detected
+Hello, World!

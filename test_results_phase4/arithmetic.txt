@@ -1,0 +1,13 @@
+[DEBUG] Executing file: examples/simple_math.fl
+[RUNTIME] Step 1: Creating lexer
+[RUNTIME] lexer created: 0x5b9833fd8790
+[RUNTIME] Step 2: Creating parser (token_count=23)
+[RUNTIME] parser created: 0x5b9833fd8af0
+[RUNTIME] Calling fl_parser_parse...
+[RUNTIME] fl_parser_parse returned: ast=0x7d5e5ccbd7c8
+[RUNTIME] compiling AST to bytecode...
+[RUNTIME] compile result: chunk=0x5b9833fd8b80 code_len=52
+[VM] HALT reached, returning
+[DEBUG] Execution complete
+[DEBUG] No errors detected
+50

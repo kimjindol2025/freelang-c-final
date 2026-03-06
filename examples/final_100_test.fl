@@ -1,0 +1,42 @@
+// FreeLang C Runtime v1.0 — 최종 100% 완성 테스트
+
+println("════════════════════════════════");
+println("🎉 FreeLang C Runtime v1.0");
+println("════════════════════════════════");
+
+// Test 1: 기본 연산
+println("\n✅ Test 1: 기본 연산");
+let a = 5;
+let b = 3;
+println(a + b);  // 8
+
+// Test 2: 재귀 함수
+println("\n✅ Test 2: 재귀 (Fibonacci)");
+fn fib(n) {
+    if (n <= 1) return n;
+    return fib(n-1) + fib(n-2);
+}
+println(fib(10));  // 55
+
+// Test 3: 배열
+println("\n✅ Test 3: 배열");
+let arr = [1, 2, 3, 4, 5];
+println(arr.len);  // 5
+
+// Test 4: 람다 함수
+println("\n✅ Test 4: 람다 함수");
+let double = fn(x) { return x * 2; };
+println(double(10));  // 20
+
+// Test 5: 예외 처리
+println("\n✅ Test 5: 예외 처리");
+try {
+    throw "test error";
+} catch (e) {
+    println("Caught:");
+    println(e);
+}
+
+println("\n════════════════════════════════");
+println("🚀 모든 테스트 완료!");
+println("════════════════════════════════");

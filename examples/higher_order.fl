@@ -1,0 +1,54 @@
+// Phase 7: Higher-Order Functions with Closures
+// Test functions as first-class values
+
+// Test 1: map with closure callback
+let nums = [1, 2, 3, 4, 5];
+let doubled = map(nums, (x) => x * 2);
+// Expected: [2, 4, 6, 8, 10]
+
+println(doubled);
+
+// Test 2: filter with closure callback
+let evens = filter(nums, (x) => x % 2 == 0);
+// Expected: [2, 4]
+
+println(evens);
+
+// Test 3: reduce with closure callback
+let sum = reduce(nums, fn(acc, x) { return acc + x; }, 0);
+// Expected: 15
+
+println(sum);
+
+// Test 4: Composing higher-order functions
+let isOdd = (x) => x % 2 != 0;
+let square = (x) => x * x;
+
+let odd_numbers = filter(nums, isOdd);      // [1, 3, 5]
+let odd_squares = map(odd_numbers, square); // [1, 9, 25]
+
+println(odd_squares);  // Expected: [1, 9, 25]
+
+// Test 5: Function accepting function parameter
+fn apply_twice(f, x) {
+    return f(f(x));
+}
+
+let increment = (x) => x + 1;
+let result = apply_twice(increment, 5);
+// increment(increment(5)) = increment(6) = 7
+
+println(result);  // Expected: 7
+
+// Test 6: Function returning function
+fn multiply_by(factor) {
+    return (x) => x * factor;
+}
+
+let times3 = multiply_by(3);
+let times5 = multiply_by(5);
+
+println(times3(7));  // Expected: 21
+println(times5(7));  // Expected: 35
+
+println("Higher-order function tests completed");

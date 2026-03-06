@@ -1,0 +1,59 @@
+// Exception Handling Test
+
+// Test 1: Basic try-catch
+println("=== Test 1: Basic try-catch ===");
+try {
+    println("In try block");
+    throw "error occurred";
+    println("This should not print");
+} catch (e) {
+    println("Caught exception:");
+    println(e);
+}
+println("After exception");
+
+// Test 2: Exception without throw
+println("\n=== Test 2: No exception ===");
+try {
+    println("No exception here");
+    let x = 42;
+    println(x);
+} catch (err) {
+    println("This catch should not run");
+}
+println("Done");
+
+// Test 3: Nested try-catch
+println("\n=== Test 3: Nested try-catch ===");
+try {
+    try {
+        println("Inner try");
+        throw "inner error";
+    } catch (e1) {
+        println("Inner catch:");
+        println(e1);
+    }
+    println("After inner");
+} catch (e2) {
+    println("Outer catch (should not run)");
+}
+println("Done");
+
+// Test 4: Function with exception
+println("\n=== Test 4: Function throwing ===");
+fn divide(a, b) {
+    if (b == 0) {
+        throw "division by zero";
+    }
+    return a / b;
+}
+
+try {
+    let result = divide(10, 0);
+    println(result);
+} catch (err) {
+    println("Caught error:");
+    println(err);
+}
+
+println("\n=== All tests completed ===");

@@ -1,0 +1,13 @@
+[DEBUG] Executing file: test_results_phase4/stress_nested_ops.fl
+[RUNTIME] Step 1: Creating lexer
+[RUNTIME] lexer created: 0x5d8af0de5790
+[RUNTIME] Step 2: Creating parser (token_count=30)
+[RUNTIME] parser created: 0x5d8af0de5bd0
+[RUNTIME] Calling fl_parser_parse...
+[RUNTIME] fl_parser_parse returned: ast=0x7d34a4ebe068
+[RUNTIME] compiling AST to bytecode...
+[RUNTIME] compile result: chunk=0x5d8af0de5c40 code_len=68
+[VM] HALT reached, returning
+[DEBUG] Execution complete
+[DEBUG] No errors detected
+14

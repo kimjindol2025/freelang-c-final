@@ -1,0 +1,50 @@
+// Test example showcasing FreeLang features
+
+fn test_variables() {
+    let x = 10;
+    let y = 20;
+    let z = x + y;
+    println("Variables: x=" + str(x) + ", y=" + str(y) + ", z=" + str(z));
+}
+
+fn test_arrays() {
+    let arr = [1, 2, 3, 4, 5];
+    println("Array: " + str(arr));
+    println("Length: " + str(len(arr)));
+}
+
+fn test_control_flow() {
+    for (let i = 0; i < 3; i = i + 1) {
+        if (i == 0) {
+            println("First iteration");
+        } else if (i == 1) {
+            println("Second iteration");
+        } else {
+            println("Third iteration");
+        }
+    }
+}
+
+fn test_exceptions() {
+    try {
+        throw "An error occurred";
+    } catch (err) {
+        println("Caught error: " + err);
+    } finally {
+        println("Finally block executed");
+    }
+}
+
+fn main() {
+    println("=== FreeLang Feature Tests ===");
+    test_variables();
+    println("");
+    test_arrays();
+    println("");
+    test_control_flow();
+    println("");
+    test_exceptions();
+    return 0;
+}
+
+main();

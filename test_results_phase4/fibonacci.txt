@@ -1,0 +1,13 @@
+[DEBUG] Executing file: examples/fibonacci.fl
+[RUNTIME] Step 1: Creating lexer
+[RUNTIME] lexer created: 0x586b54a49790
+[RUNTIME] Step 2: Creating parser (token_count=40)
+[RUNTIME] parser created: 0x586b54a49d10
+[RUNTIME] Calling fl_parser_parse...
+[RUNTIME] fl_parser_parse returned: ast=0x7f2f1a0bf5f8
+[RUNTIME] compiling AST to bytecode...
+[RUNTIME] compile result: chunk=0x586b54a49e30 code_len=26
+[VM] HALT reached, returning
+[DEBUG] Execution complete
+[DEBUG] No errors detected
+null

@@ -1,0 +1,88 @@
+// Phase 6: Arrays, Strings, and Lambda Functions
+// Complete test suite for Phase 6 features
+
+// ============================================================
+// 1. Array Assignment (arr[idx] = value)
+// ============================================================
+println("=== Array Assignment Test ===");
+let arr = [1, 2, 3];
+arr[0] = 10;
+arr[2] = 30;
+println(arr[0]);  // Expected: 10
+println(arr[1]);  // Expected: 2
+println(arr[2]);  // Expected: 30
+
+// ============================================================
+// 2. Array Methods (push, pop, slice)
+// ============================================================
+println("");
+println("=== Array Methods Test ===");
+
+let numbers = [1, 2, 3];
+push(numbers, 4);
+println(numbers);  // Expected: [1, 2, 3, 4]
+
+let popped = pop(numbers);
+println(popped);   // Expected: 4
+println(numbers);  // Expected: [1, 2, 3]
+
+let sliced = slice(numbers, 1, 2);
+println(sliced);   // Expected: [2]
+
+// ============================================================
+// 3. Lambda/Function Expressions
+// ============================================================
+println("");
+println("=== Lambda Functions Test ===");
+
+let double = fn(x) { return x * 2; };
+println(double(5));   // Expected: 10
+println(double(10));  // Expected: 20
+
+let add = fn(a, b) { return a + b; };
+println(add(3, 4));   // Expected: 7
+println(add(10, 20)); // Expected: 30
+
+// ============================================================
+// 4. Higher-Order Functions (map)
+// ============================================================
+println("");
+println("=== Higher-Order Functions Test ===");
+
+let nums = [1, 2, 3];
+let mapper = fn(x) { return x * 2; };
+let doubled = map(nums, mapper);
+println(doubled);  // Expected: [2, 4, 6]
+
+// ============================================================
+// 5. Combined: Array assignment + lambdas
+// ============================================================
+println("");
+println("=== Combined Test ===");
+
+let values = [1, 2, 3, 4, 5];
+let idx = 2;
+values[idx] = 100;
+println(values);   // Expected: [1, 2, 100, 4, 5]
+
+// Lambda that uses array
+let getArrayElem = fn(arr, i) { return arr[i]; };
+println(getArrayElem(values, 2));  // Expected: 100
+
+// ============================================================
+// 6. String Operations
+// ============================================================
+println("");
+println("=== String Operations Test ===");
+
+let str = "hello";
+println(len(str));     // Expected: 5
+println(upper(str));   // Expected: "HELLO"
+println(lower("WORLD")); // Expected: "world"
+
+// ============================================================
+// SUMMARY
+// ============================================================
+println("");
+println("=== Phase 6 Complete ===");
+println("All tests completed successfully!");

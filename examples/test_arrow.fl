@@ -1,0 +1,54 @@
+// Test Arrow Function - Phase 7-A Implementation
+
+// Test 1: Single parameter, simple expression
+let f1 = (x) => x * 2;
+println(f1(5));  // Expected: 10
+
+// Test 2: Multiple parameters
+let f2 = (x, y) => x + y;
+println(f2(3, 4));  // Expected: 7
+
+// Test 3: Zero parameters
+let f3 = () => 42;
+println(f3());  // Expected: 42
+
+// Test 4: Arrow function with block body
+let f4 = (x) => {
+    let y = x * x;
+    return y;
+};
+println(f4(6));  // Expected: 36
+
+// Test 5: Arrow in variable assignment with computation
+let numbers = [1, 2, 3];
+let double = (x) => x * 2;
+println(double(numbers[0]));  // Expected: 2
+println(double(numbers[1]));  // Expected: 4
+println(double(numbers[2]));  // Expected: 6
+
+// Test 6: Arrow function with string concatenation
+let greet = (name) => "Hello, " + name;
+println(greet("World"));  // Expected: Hello, World
+
+// Test 7: Arrow function returned from function
+fn makeAdder(a) {
+    return (b) => a + b;
+}
+let add5 = makeAdder(5);
+println(add5(3));  // Expected: 8
+
+// Test 8: Nested arrow functions (currying)
+let add = (x) => (y) => x + y;
+let add10 = add(10);
+println(add10(5));  // Expected: 15
+
+// Test 9: Arrow in array
+let funcs = [(x) => x + 1, (x) => x * 2, (x) => x - 1];
+println(funcs[0](5));  // Expected: 6
+println(funcs[1](5));  // Expected: 10
+println(funcs[2](5));  // Expected: 4
+
+// Test 10: Arrow function with boolean expression
+let isEven = (x) => x % 2 == 0;
+println(isEven(4));   // Expected: 1 (true)
+println(isEven(3));   // Expected: 0 (false)

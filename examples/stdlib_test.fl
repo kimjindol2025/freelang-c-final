@@ -1,0 +1,159 @@
+// Comprehensive test for FreeLang Standard Library Functions
+// Tests: I/O, String, Array, Math, Type conversion, Object, JSON, Control Flow
+
+fn test_io() {
+    println("=== I/O Functions ===");
+    print("Basic print: ");
+    println("test");
+    println("Multiple args: ", 1, " ", 2, " ", 3);
+    println("");
+}
+
+fn test_strings() {
+    println("=== String Functions ===");
+
+    let str = "hello";
+    println("Original: " + str);
+    println("Length: " + str(len(str)));
+    println("Upper: " + upper(str));
+    println("Lower: " + lower(upper(str)));
+
+    let concat = str + " " + "world";
+    println("Concat: " + concat);
+
+    let contains = contains(concat, "world");
+    println("Contains 'world': " + str(contains));
+
+    let starts = starts_with(concat, "hello");
+    println("Starts with 'hello': " + str(starts));
+
+    let ends = ends_with(concat, "world");
+    println("Ends with 'world': " + str(ends));
+
+    let pos = index_of(concat, "world");
+    println("Index of 'world': " + str(pos));
+
+    let repeated = repeat("ab", 3);
+    println("Repeat 'ab' 3 times: " + repeated);
+
+    let char = char_at(str, 1);
+    println("Char at index 1: " + char);
+
+    println("");
+}
+
+fn test_arrays() {
+    println("=== Array Functions ===");
+
+    let arr = [1, 2, 3, 4, 5];
+    println("Original array: [1, 2, 3, 4, 5]");
+
+    let len_arr = len(arr);
+    println("Length: " + str(len_arr));
+
+    let joined = join(arr, ", ");
+    println("Joined with ', ': " + joined);
+
+    let reversed = reverse(arr);
+    println("Reversed: should be [5, 4, 3, 2, 1]");
+
+    let includes_3 = includes(arr, 3);
+    println("Includes 3: " + str(includes_3));
+
+    let includes_10 = includes(arr, 10);
+    println("Includes 10: " + str(includes_10));
+
+    let idx = index_of(arr, 3);
+    println("Index of 3: " + str(idx));
+
+    let last_idx = last_index_of(arr, 3);
+    println("Last index of 3: " + str(last_idx));
+
+    println("");
+}
+
+fn test_math() {
+    println("=== Math Functions ===");
+
+    let x = -5;
+    println("abs(-5): " + str(abs(x)));
+
+    let y = 16;
+    println("sqrt(16): " + str(sqrt(y)));
+
+    let a = 2;
+    let b = 3;
+    println("pow(2, 3): " + str(pow(a, b)));
+
+    let pi = 3.14159;
+    println("sin(3.14159): " + str(sin(pi)));
+    println("cos(0): " + str(cos(0)));
+
+    println("floor(3.7): " + str(floor(3.7)));
+    println("ceil(3.2): " + str(ceil(3.2)));
+    println("round(3.5): " + str(round(3.5)));
+
+    println("min(5, 3): " + str(min(5, 3)));
+    println("max(5, 3): " + str(max(5, 3)));
+
+    println("log(2.718): " + str(log(2.718)));
+    println("exp(1): " + str(exp(1)));
+
+    println("");
+}
+
+fn test_type_functions() {
+    println("=== Type Functions ===");
+
+    let val_int = 42;
+    let val_float = 3.14;
+    let val_str = "hello";
+    let val_bool = true;
+    let val_null = null;
+    let val_arr = [1, 2, 3];
+
+    println("typeof(42): " + typeof(val_int));
+    println("typeof(3.14): " + typeof(val_float));
+    println("typeof('hello'): " + typeof(val_str));
+    println("typeof(true): " + typeof(val_bool));
+    println("typeof(null): " + typeof(val_null));
+    println("typeof([1,2,3]): " + typeof(val_arr));
+
+    println("str(42): " + str(42));
+    println("str(3.14): " + str(3.14));
+    println("str(true): " + str(true));
+    println("str(false): " + str(false));
+
+    println("is_null(null): " + str(is_null(null)));
+    println("is_null(42): " + str(is_null(42)));
+
+    println("");
+}
+
+fn test_control_flow() {
+    println("=== Control Flow Functions ===");
+
+    // assert should not throw for true condition
+    assert(true, "This should pass");
+    println("Assert passed for true condition");
+
+    // Note: panic would exit, so we skip testing it
+    println("");
+}
+
+fn main() {
+    println("########## FreeLang Standard Library Test ##########");
+    println("");
+
+    test_io();
+    test_strings();
+    test_arrays();
+    test_math();
+    test_type_functions();
+    test_control_flow();
+
+    println("########## All tests completed ##########");
+    return 0;
+}
+
+main();

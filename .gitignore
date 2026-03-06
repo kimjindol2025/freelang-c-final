@@ -1,0 +1,36 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+
+# Executables
+fl
+bin/
+obj/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debugging
+*.dSYM/
+*.su
+*.gch
+
+# Dependencies
+lib/node_modules/
+*.lock
+*.log
+
+# Test outputs
+test/output/
+bench/results/
+
+# System
+.DS_Store
+Thumbs.db

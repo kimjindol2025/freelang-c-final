@@ -1,0 +1,24 @@
+// Phase 7: Basic Closure Example
+// Test 1: Simple closure creation and execution
+
+// Closure 1: Simple arithmetic closure
+let x = 5;
+let f = (y) => x + y;
+
+// Call closure
+let result1 = f(3);
+println(result1);  // Expected: 8
+
+// Closure 2: Multiple closures capturing same variable
+let g = (z) => x * z;
+let result2 = g(2);
+println(result2);  // Expected: 10
+
+// Closure 3: Nested variable references
+let a = 10;
+let b = 20;
+let h = (c) => a + b + c;
+let result3 = h(5);
+println(result3);  // Expected: 35
+
+println("Basic closure tests completed");

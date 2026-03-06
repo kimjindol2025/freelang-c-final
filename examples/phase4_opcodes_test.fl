@@ -1,0 +1,46 @@
+// Phase 4 VM Opcode Test Cases
+// Tests arithmetic, comparison, logic, and control flow
+
+// Test 1: Arithmetic operations
+println("=== ARITHMETIC TESTS ===");
+println(5 + 3);           // 8
+println(10 - 3);          // 7
+println(4 * 5);           // 20
+println(20 / 4);          // 5
+println(17 % 5);          // 2
+
+// Test 2: Float operations
+println("=== FLOAT TESTS ===");
+println(5.5 + 2.5);       // 8.0
+println(10.5 - 3.5);      // 7.0
+println(2.5 * 2.0);       // 5.0
+println(10.0 / 2.0);      // 5.0
+
+// Test 3: String concatenation
+println("=== STRING TESTS ===");
+println("Hello" + " " + "World");  // Hello World
+
+// Test 4: Comparison operations
+println("=== COMPARISON TESTS ===");
+println(5 == 5);          // true
+println(3 != 5);          // true
+println(3 < 5);           // true
+println(5 <= 5);          // true
+println(7 > 3);           // true
+println(5 >= 5);          // true
+
+// Test 5: Logical operations
+println("=== LOGICAL TESTS ===");
+println(true && true);    // true
+println(true && false);   // false
+println(false || false);  // false
+println(true || false);   // true
+println(!true);           // false
+println(!false);          // true
+
+// Test 6: Complex expressions
+println("=== COMPLEX EXPRESSIONS ===");
+println((5 + 3) * 2);               // 16
+println((5 > 3) && (2 < 4));        // true
+println((10 > 5) || (2 > 3));       // true
+println(!(3 == 5));                 // true

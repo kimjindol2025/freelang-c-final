@@ -1,0 +1,5 @@
+FreeLang v1.0.0 REPL
+Type 'exit' or 'quit' to quit
+
+fl> 
+Goodbye!

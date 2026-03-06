@@ -1,0 +1,5 @@
+// Simple Arrow Function Test
+
+// Test 1: Single parameter
+let f = (x) => x * 2;
+println(f(5));
