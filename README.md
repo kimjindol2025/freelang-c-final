@@ -1,14 +1,14 @@
-# FreeLang C Runtime v2.5
+# FreeLang C Runtime v2.6
 
-**외부 의존성 0개** — 완전한 프로그래밍 언어 런타임
-보안/암호화/압축/이미지/프로세스/메일/API문서 관리를 언어 자체에 내장.
+**외부 패키지 0개** — 완전한 프로그래밍 언어 런타임.
+보안 · 암호화 · 압축 · 이미지 · 프로세스 · **이메일** · API문서를 언어 자체에 내장.
 
 동적 타입, 일급 함수, 클로저, 예외 처리, Reactive 상태 관리를 지원하는 Stack-based 인터프리터.
-npm, pip, gem 없이 **언어 자체가 인프라**입니다.
+nodemailer, npm, pip, gem 없이 **언어 자체가 인프라**입니다.
 
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Version](https://img.shields.io/badge/version-2.5.0-blue)
-![Code](https://img.shields.io/badge/code-22%2C000%2B%20lines-yellow)
+![Version](https://img.shields.io/badge/version-2.6.0-blue)
+![Code](https://img.shields.io/badge/code-19%2C300%2B%20lines-yellow)
 ![Deps](https://img.shields.io/badge/dependencies-0-success)
 ![SIMD](https://img.shields.io/badge/SIMD-SSE2%2FAVX2%2FNEON-orange)
 ![Phases](https://img.shields.io/badge/phases-12-purple)
@@ -20,15 +20,15 @@ npm, pip, gem 없이 **언어 자체가 인프라**입니다.
 
 | 항목 | 내용 |
 |------|------|
-| **외부 의존성** | 0개 |
-| **총 코드** | 22,000+ 줄 |
-| **소스 파일** | 22개 C + 22개 헤더 |
-| **키워드** | 42개 |
+| **외부 패키지** | 0개 |
+| **총 코드** | 19,300+ 줄 |
+| **소스 파일** | 21개 C + 21개 헤더 |
+| **키워드** | 40개 (u8 / aligned / vectorize 포함) |
 | **Opcode** | 54개 |
-| **표준 라이브러리** | 170+ 함수 |
-| **대체한 npm 패키지** | helmet, bcrypt, sharp, pm2, cluster, zlib, winston, swagger-ui, nodemailer |
+| **표준 라이브러리** | 153+ 함수 |
+| **대체한 npm 패키지** | **nodemailer**, helmet, bcrypt, sharp, pm2, cluster, zlib, winston |
 | **SIMD 지원** | SSE2 / AVX2 / ARM NEON (자동 감지) |
-| **어노테이션** | @api, @watch, @transaction, @cluster, @autorestart, @vectorize, @log_level |
+| **어노테이션** | @watch, @transaction, @cluster, @autorestart, @vectorize, @log_level |
 
 ---
 
@@ -575,10 +575,10 @@ freelang-c/
 | 8 | Phoenix-Spawn | pm2/cluster | ✅ | @cluster/@autorestart |
 | 9 | MOSS-Compressor | zlib | ✅ | RFC 1951/1952, SIMD AVX2/NEON |
 | 10 | Proof-Logger | winston/bunyan | ✅ | SPSC 링버퍼, io_uring 비동기 |
-| **11** | **MOSS-Autodoc** | **swagger-ui/OpenAPI** | ✅ | **@api 어노테이션, OpenAPI 3.0** |
-| **12** | **MOSS-Mail-Core** | **nodemailer** | ✅ | **RFC 5321, STARTTLS** |
+| **11** | **MOSS-Autodoc** | **swagger-ui/OpenAPI** | ✅ | @api 어노테이션, OpenAPI 3.0 자동 생성 |
+| **12** | **MOSS-Mail-Core** | **nodemailer** | ✅ | SMTP FSM + STARTTLS + Base64 MIME |
 
-**대체한 외부 패키지 총계: 9개** (helmet, bcrypt, sharp, pm2, cluster, zlib, winston, swagger-ui, nodemailer)
+**대체한 외부 패키지 총계: 9개** (nodemailer, helmet, bcrypt, sharp, pm2, cluster, zlib, winston, swagger-ui)
 
 ---
 
@@ -598,7 +598,7 @@ make clean && make
 
 ---
 
-**Version**: 2.5.0
+**Version**: 2.6.0
 **Status**: Production Ready
 **Phases**: 12
-**Updated**: 2026-03-08
+**Updated**: 2026-03-09
