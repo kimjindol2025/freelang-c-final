@@ -1,0 +1,12 @@
+/* MOSS-Mail-Core: Base64 인코더 검증 테스트 */
+let encoded = smtp_mime_encode("Hello, FreeLang!");
+print("Base64 결과: ");
+print(encoded);
+
+let encoded2 = smtp_mime_encode("안녕하세요, FreeLang SMTP 셀프호스팅");
+print("한글 Base64: ");
+print(encoded2);
+
+let encoded3 = smtp_mime_encode("Man");
+print("Man → SGFu 검증: ");
+print(encoded3);

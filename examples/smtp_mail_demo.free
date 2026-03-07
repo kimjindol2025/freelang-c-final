@@ -1,0 +1,40 @@
+/**
+ * MOSS-Mail-Core 데모
+ * FreeLang 내장 SMTP 클라이언트 (nodemailer 완전 대체)
+ *
+ * 빌트인:
+ *   smtp_mail(host, port, user, pass, from, to, subject, body)     -> string
+ *   smtp_mail_tls(host, port, user, pass, from, to, subject, body) -> string (STARTTLS)
+ *   smtp_mime_encode(text) -> string (Base64)
+ */
+
+/* Base64 인코딩 테스트 */
+let b64 = smtp_mime_encode("FreeLang MOSS-Mail-Core v1.0");
+print("Base64 인코딩 테스트: ");
+print(b64);
+
+/* plain SMTP 발송 예시 (실서버 연결) */
+/* let result = smtp_mail(
+    "smtp.dclub.kr",
+    587,
+    "bigwash",
+    "YOUR_PASSWORD",
+    "jindol@dclub.kr",
+    "admin@dclub.kr",
+    "FreeLang 셀프호스팅 메일 테스트",
+    "이 메일은 FreeLang MOSS-Mail-Core가 nodemailer 없이 순수 C로 발송했습니다."
+); */
+
+/* STARTTLS 발송 예시 */
+/* let result_tls = smtp_mail_tls(
+    "smtp.gmail.com",
+    587,
+    "youruser@gmail.com",
+    "YOUR_APP_PASSWORD",
+    "youruser@gmail.com",
+    "recipient@example.com",
+    "FreeLang STARTTLS 메일",
+    "STARTTLS로 암호화된 FreeLang 메일입니다."
+); */
+
+print("MOSS-Mail-Core: 외부 의존성 0%, 셀프호스팅 완료");

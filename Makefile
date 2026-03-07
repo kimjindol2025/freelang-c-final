@@ -6,7 +6,7 @@ CFLAGS  = -Wall -Wextra -O2 -std=c11 \
           -I./include \
           -I./lib/src \
           -D_POSIX_C_SOURCE=200809L
-LDFLAGS = -lm -lpthread -ldl
+LDFLAGS = -lm -lpthread -ldl -lssl -lcrypto
 DEBUG   = -g -O0 -DDEBUG
 
 # Directories
