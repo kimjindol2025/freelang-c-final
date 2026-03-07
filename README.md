@@ -333,6 +333,105 @@ fn criticalSection() { ... }
 | `log_flush()` | logger.end() | io_uring 비동기 플러시 |
 | `log_stats()` | - | 드롭율, 링버퍼 점유율 |
 
+### Phase 11: MOSS-Autodoc — Swagger/OpenAPI 대체
+
+외부 swagger-ui, redoc, openapi 라이브러리 0%. `@api` 어노테이션으로 함수에 메타데이터를 컴파일 타임에 첨부. 런타임에 OpenAPI 3.0 JSON + 순수 HTML/CSS/JS UI 자동 생성.
+
+**코드가 곧 문서다.** 함수를 정의하면 API 명세가 자동 생성됩니다.
+
+```freelang
+// @api 어노테이션: 파서가 fn_decl에 메타데이터 직접 첨부
+@api(path: "/users", method: "GET", summary: "사용자 목록 조회", tag: "users", returns: "array")
+fn get_users() {
+    return [{ id: 1, name: "김진" }]
+}
+
+@api(path: "/users/{id}", method: "GET", summary: "사용자 단건 조회", tag: "users", returns: "object")
+fn get_user(id) {
+    return { id: id, name: "김진" }
+}
+
+// 런타임 레지스트리 등록
+autodoc_init("My API", "1.0.0", "API 설명")
+autodoc_register("get_users", "/users", "GET", "사용자 목록", "users", "array")
+autodoc_register("get_user",  "/users/{id}", "GET", "단건 조회", "users", "object")
+autodoc_add_param("id", "int", "사용자 ID", true)
+
+// OpenAPI 3.0 JSON 생성
+print(autodoc_json())
+
+// 내장 HTML UI 서빙 (외부 CDN 0%)
+print(autodoc_html())
+
+// 라우트 목록 조회
+print(autodoc_routes_json())
+print(autodoc_count())
+```
+
+**생성된 OpenAPI 3.0 JSON (실제 출력):**
+```json
+{
+  "openapi": "3.0.0",
+  "info": { "title": "My API", "version": "1.0.0" },
+  "paths": {
+    "/users": {
+      "get": {
+        "summary": "사용자 목록 조회",
+        "operationId": "get_users",
+        "tags": ["users"],
+        "responses": { "200": { "description": "Success" } }
+      }
+    }
+  }
+}
+```
+
+| 함수 | 대체 | 비고 |
+|------|------|------|
+| `autodoc_init(title, ver, desc)` | swagger({...}) | 글로벌 레지스트리 초기화 |
+| `autodoc_register(name, path, method, ...)` | @ApiOperation | 라우트 등록 (최대 256) |
+| `autodoc_add_param(name, type, desc, req)` | @ApiParam | 파라미터 추가 (최대 16) |
+| `autodoc_json()` | swagger-ui openapi.json | OpenAPI 3.0 JSON 문자열 |
+| `autodoc_html()` | swagger-ui-express | 내장 HTML/CSS/JS UI |
+| `autodoc_routes_json()` | - | 경량 라우트 목록 |
+| `autodoc_count()` | - | 등록된 라우트 수 |
+| **`@api(...)` 어노테이션** | **@ApiEndpoint** | **파서 컴파일 타임 메타데이터** |
+
+### Phase 12: MOSS-Mail-Core — nodemailer 대체
+
+외부 nodemailer, smtp.js 0%. RFC 5321 SMTP 클라이언트 내장. STARTTLS/TLS, BASE64 MIME 인코딩 순수 C 구현.
+
+```freelang
+// 일반 SMTP (포트 25/587)
+smtp_mail(
+    "smtp.example.com", 587,
+    "user@example.com", "password",
+    "from@example.com",
+    "to@example.com",
+    "제목: FreeLang 테스트",
+    "안녕하세요! FreeLang MOSS-Mail-Core에서 보냅니다."
+)
+
+// TLS SMTP (포트 465)
+smtp_mail_tls(
+    "smtp.gmail.com", 465,
+    "user@gmail.com", "app_password",
+    "from@gmail.com",
+    "to@gmail.com",
+    "TLS 메일 테스트",
+    "STARTTLS 암호화 전송"
+)
+
+// MIME BASE64 인코딩
+let encoded = smtp_mime_encode("한글 콘텐츠")
+```
+
+| 함수 | 대체 | 비고 |
+|------|------|------|
+| `smtp_mail(host, port, user, pw, from, to, subj, body)` | nodemailer.sendMail() | RFC 5321 SMTP |
+| `smtp_mail_tls(...)` | nodemailer + tls | STARTTLS 암호화 |
+| `smtp_mime_encode(str)` | nodemailer MIME | BASE64 인코딩 |
+
 ---
 
 ## 언어 문법
@@ -402,47 +501,6 @@ try {
 
 ---
 
-## 프로젝트 구조
-
-```
-freelang-c/
-├── include/
-│   ├── freelang.h        # 메인 헤더 (타입, Opcode 54개)
-│   ├── compression.h     # MOSS-Compressor (Phase 9) ← NEW
-│   ├── http_secure.h     # Secure-Pipeline (Phase 6)
-│   ├── process.h         # Phoenix-Spawn (Phase 8)
-│   ├── cluster.h         # Cluster Manager (Phase 8)
-│   ├── logger.h          # 비동기 로거
-│   ├── introspect.h      # 런타임 인트로스펙션
-│   ├── ast.h, token.h, vm.h, ...
-│
-├── src/
-│   ├── main.c            # 진입점
-│   ├── lexer.c           # 토크나이저
-│   ├── parser.c          # 파서
-│   ├── compiler.c        # 컴파일러
-│   ├── vm.c              # 스택 VM (Opcode 54개)
-│   ├── runtime.c         # 런타임
-│   ├── stdlib.c          # 표준 라이브러리 (136+ 함수)
-│   ├── compression.c     # DEFLATE+GZIP 압축 엔진 (Phase 9) ← NEW
-│   ├── http_secure.c     # HTTP 보안 헤더 (Phase 6)
-│   ├── process.c         # 프로세스 관리 (Phase 8)
-│   ├── cluster.c         # 클러스터 (Phase 8)
-│   ├── logger.c          # 비동기 로거
-│   ├── introspect.c      # 인트로스펙션
-│   ├── gc.c, ast.c, closure.c, error.c, token.c, typechecker.c
-│
-├── examples/
-│   ├── test_compression.free  # MOSS-Compressor 테스트 (Phase 9) ← NEW
-│   ├── secure-server.free     # HTTP 보안 서버 (Phase 6)
-│   ├── fibonacci.fl, closure.fl, arrays.fl, ...
-│
-├── Makefile
-└── bin/fl                # 실행파일 (의존성 0)
-```
-
----
-
 ## 빌드 요구사항
 
 - GCC 9+ 또는 Clang 10+
@@ -458,25 +516,89 @@ make release      # 릴리즈 빌드 (-O3)
 
 ---
 
+## 프로젝트 구조
+
+```
+freelang-c/
+├── include/
+│   ├── freelang.h        # 메인 헤더 (타입, Opcode 54개)
+│   ├── ast.h             # AST 노드 (fn_decl @api 메타데이터 포함)
+│   ├── autodoc.h         # MOSS-Autodoc (Phase 11) ← NEW
+│   ├── smtp_client.h     # MOSS-Mail-Core (Phase 12) ← NEW
+│   ├── compression.h     # MOSS-Compressor (Phase 9)
+│   ├── http_secure.h     # Secure-Pipeline (Phase 6)
+│   ├── process.h         # Phoenix-Spawn (Phase 8)
+│   ├── cluster.h         # Cluster Manager (Phase 8)
+│   ├── logger.h          # Proof-Logger (Phase 10)
+│   ├── introspect.h      # 런타임 인트로스펙션
+│   └── ast.h, token.h, vm.h, parser.h, ...
+│
+├── src/
+│   ├── main.c            # 진입점
+│   ├── lexer.c           # 토크나이저 (42개 키워드)
+│   ├── parser.c          # 파서 (@api/@watch/@cluster/@vectorize)
+│   ├── compiler.c        # 컴파일러
+│   ├── vm.c              # 스택 VM (Opcode 54개, 170+ 내장 함수)
+│   ├── runtime.c         # 런타임
+│   ├── stdlib.c          # 표준 라이브러리 (170+ 함수)
+│   ├── autodoc.c         # MOSS-Autodoc: OpenAPI JSON + HTML UI ← NEW
+│   ├── smtp_client.c     # MOSS-Mail-Core: RFC 5321 SMTP ← NEW
+│   ├── compression.c     # DEFLATE+GZIP (Phase 9)
+│   ├── http_secure.c     # HTTP 보안 헤더 (Phase 6)
+│   ├── process.c         # 프로세스 관리 (Phase 8)
+│   ├── cluster.c         # 클러스터 (Phase 8)
+│   ├── logger.c          # 비동기 로거 (Phase 10)
+│   ├── introspect.c      # 인트로스펙션
+│   └── gc.c, ast.c, closure.c, error.c, token.c, typechecker.c
+│
+├── examples/
+│   ├── autodoc-server.free    # MOSS-Autodoc 데모 (Phase 11) ← NEW
+│   ├── secure-server.free     # HTTP 보안 서버 (Phase 6)
+│   ├── proof_logger_demo.free # Proof-Logger 데모 (Phase 10)
+│   └── fibonacci.fl, closure.fl, arrays.fl, ...
+│
+├── Makefile
+└── bin/fl                # 실행파일 (의존성 0)
+```
+
+---
+
 ## Phase 구현 현황 요약
 
-| Phase | 이름 | 대체 npm | 상태 | 특이사항 |
-|-------|------|---------|------|---------|
-| 1–3 | Language Core | - | ✅ | Lexer→Parser→Compiler→VM |
-| 4 | MOSS-State Reactive | MobX/Redux | ✅ | 읽기 0.169μs, 쓰기 0.865μs |
-| 5 | Crypto Engine | bcrypt/openssl | ✅ | SHA-256/HMAC/PBKDF2 FIPS 준수 |
+| Phase | 이름 | 대체 npm/패키지 | 상태 | 핵심 |
+|-------|------|----------------|------|------|
+| 1–3 | Language Core | - | ✅ | Lexer→Parser→Compiler→VM, GC |
+| 4 | MOSS-State Reactive | MobX/Redux | ✅ | @watch/@transaction, 0.169μs 읽기 |
+| 5 | Crypto Engine | bcrypt/openssl | ✅ | SHA-256/HMAC/PBKDF2, NIST 검증 |
 | 6 | HTTP Secure-Pipeline | helmet | ✅ | 7개 보안 헤더 자동 주입 |
-| 7 | **Vector-Vision** | **sharp/ImageMagick** | ✅ | **@vectorize/aligned/u8 신규** |
-| 8 | Phoenix-Spawn | pm2/cluster | ✅ | @cluster/@autorestart 어노테이션 |
+| 7 | Vector-Vision | sharp/ImageMagick | ✅ | @vectorize/aligned/u8, SIMD |
+| 8 | Phoenix-Spawn | pm2/cluster | ✅ | @cluster/@autorestart |
 | 9 | MOSS-Compressor | zlib | ✅ | RFC 1951/1952, SIMD AVX2/NEON |
 | 10 | Proof-Logger | winston/bunyan | ✅ | SPSC 링버퍼, io_uring 비동기 |
+| **11** | **MOSS-Autodoc** | **swagger-ui/OpenAPI** | ✅ | **@api 어노테이션, OpenAPI 3.0** |
+| **12** | **MOSS-Mail-Core** | **nodemailer** | ✅ | **RFC 5321, STARTTLS** |
+
+**대체한 외부 패키지 총계: 9개** (helmet, bcrypt, sharp, pm2, cluster, zlib, winston, swagger-ui, nodemailer)
+
+---
 
 ## 저장소
 
 **Gogs**: https://gogs.dclub.kr/kim/freelang-c-final
 
+```bash
+git clone https://gogs.dclub.kr/kim/freelang-c-final.git
+cd freelang-c-final
+make clean && make
+
+./bin/fl examples/autodoc-server.free   # MOSS-Autodoc 데모
+./bin/fl examples/secure-server.free    # HTTP 보안 서버 데모
+./bin/fl examples/fibonacci.fl          # 재귀 예제
+```
+
 ---
 
-**Version**: 2.3.0
+**Version**: 2.5.0
 **Status**: Production Ready
+**Phases**: 12
 **Updated**: 2026-03-08
