@@ -12,10 +12,12 @@
 #include "../include/runtime.h"
 #include "../include/closure.h"
 #include "../include/stdlib_fl.h"
+#include "../include/compression.h"
 #include "../include/http_secure.h"
 #include "../include/process.h"
 #include "../include/cluster.h"
 #include "../include/introspect.h"
+#include "../include/logger.h"
 #include <sys/wait.h>
 
 /* ============================================================
@@ -437,6 +439,27 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
         fl_value_t ret = fl_http_response_json(args, argc);
         fl_vm_push(vm, ret);
         free(args);
+    /* ── Type Conversion ── */
+    } else if (strcmp(name, "str") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_string_convert(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "int") == 0 || strcmp(name, "num") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_number_convert(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "bool") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_bool_convert(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "typeof") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_typeof(args, argc);
+        fl_vm_push(vm, ret); free(args);
     /* ── Crypto (Phase 5: bcrypt 대체 — SHA-256/HMAC/PBKDF2/CSPRNG) ── */
     } else if (strcmp(name, "sha256") == 0) {
         fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
@@ -478,6 +501,210 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
         for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
         fl_value_t ret = fl_u32_add(args, argc);
         fl_vm_push(vm, ret); free(args);
+
+    /* ===== Phase 8: MOSS-Kernel-Runner 빌트인 함수 ===== */
+    /* str(val), number(val), bool(val) 형 변환 */
+    } else if (strcmp(name, "str") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_string_convert(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "number") == 0 || strcmp(name, "int") == 0 ||
+               strcmp(name, "float") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_number_convert(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "typeof") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_typeof(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "keys") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_object_keys(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "values") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_object_values(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "upper") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_string_upper(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "lower") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_string_lower(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "system_metrics") == 0 ||
+               strcmp(name, "System.metrics") == 0) {
+        for (int i = 0; i < argc; i++) fl_vm_pop(vm);
+        fl_value_t ret = fl_system_metrics(NULL, 0);
+        fl_vm_push(vm, ret);
+    } else if (strcmp(name, "process_spawn") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_process_spawn(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "process_kill") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_process_kill(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "process_list") == 0) {
+        fl_value_t* args = malloc(1 * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) fl_vm_pop(vm); /* 인자 제거 */
+        fl_value_t ret = fl_process_list(args, 0);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "process_restart") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_process_restart(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "process_pid") == 0) {
+        for (int i = 0; i < argc; i++) fl_vm_pop(vm);
+        fl_value_t ret = fl_process_pid(NULL, 0);
+        fl_vm_push(vm, ret);
+    } else if (strcmp(name, "process_sleep") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_process_sleep(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "cluster_workers") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_cluster_workers(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    /* Phase 6: Vector-Vision builtin functions */
+    } else if (strcmp(name, "vision_load") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_load(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_save") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_save(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_resize") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_resize(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_width") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_width(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_height") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_height(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_channels") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_channels(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_grayscale") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_grayscale(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_blur") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_blur(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_pixel_get") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_pixel_get(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_pixel_set") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vision_pixel_set(args, (size_t)argc);
+        fl_value_t null_ret; null_ret.type = FL_TYPE_NULL;
+        fl_vm_push(vm, null_ret); free(args);
+    } else if (strcmp(name, "vision_info") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_info(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "vision_simd_caps") == 0) {
+        for (int i = 0; i < argc; i++) fl_vm_pop(vm);
+        fl_value_t ret = fl_vision_simd_caps(NULL, 0);
+        fl_vm_push(vm, ret);
+    /* Proof-Logger builtin functions */
+    } else if (strcmp(name, "log_configure") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_log_configure_builtin(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "log_debug") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_log_debug_builtin(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "log_info") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_log_info_builtin(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "log_warn") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_log_warn_builtin(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "log_error") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_log_error_builtin(args, (size_t)argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "log_flush") == 0) {
+        for (int i = 0; i < argc; i++) fl_vm_pop(vm);
+        fl_value_t ret = fl_log_flush_builtin(NULL, 0);
+        fl_vm_push(vm, ret);
+    } else if (strcmp(name, "log_stats") == 0) {
+        for (int i = 0; i < argc; i++) fl_vm_pop(vm);
+        fl_value_t ret = fl_log_stats_builtin(NULL, 0);
+        fl_vm_push(vm, ret);
+    /* MOSS-Compressor v1.0 */
+    } else if (strcmp(name, "compress") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_compress(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "decompress") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_decompress(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "gzip") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_gzip(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "gunzip") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_gunzip(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "compress_ratio") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_compress_ratio(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "compress_info") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_compress_info(args, (size_t)argc));
+        free(args);
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;
@@ -522,7 +749,7 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
     int opcount = 0;
     while (ip < size) {
         opcount++;
-        if (opcount > 1000) {
+        if (opcount > 1000000) {
             fprintf(stderr, "[VM] WARNING: too many opcodes (%d), breaking\n", opcount);
             break;
         }
@@ -621,12 +848,24 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
                     result.type = FL_TYPE_INT;
                     result.data.int_val = a.data.int_val + b.data.int_val;
                 } else if (a.type == FL_TYPE_STRING || b.type == FL_TYPE_STRING) {
-                    /* String concatenation */
+                    /* String concatenation: 비-문자열 타입 자동 변환 */
+                    char buf_a[64] = "null", buf_b[64] = "null";
+                    const char *sa = buf_a, *sb = buf_b;
+                    if (a.type == FL_TYPE_STRING) sa = a.data.string_val ? a.data.string_val : "null";
+                    else if (a.type == FL_TYPE_INT)   snprintf(buf_a, sizeof(buf_a), "%ld", a.data.int_val);
+                    else if (a.type == FL_TYPE_FLOAT)  snprintf(buf_a, sizeof(buf_a), "%g", a.data.float_val);
+                    else if (a.type == FL_TYPE_BOOL)   snprintf(buf_a, sizeof(buf_a), "%s", a.data.bool_val ? "true" : "false");
+                    if (b.type == FL_TYPE_STRING) sb = b.data.string_val ? b.data.string_val : "null";
+                    else if (b.type == FL_TYPE_INT)   snprintf(buf_b, sizeof(buf_b), "%ld", b.data.int_val);
+                    else if (b.type == FL_TYPE_FLOAT)  snprintf(buf_b, sizeof(buf_b), "%g", b.data.float_val);
+                    else if (b.type == FL_TYPE_BOOL)   snprintf(buf_b, sizeof(buf_b), "%s", b.data.bool_val ? "true" : "false");
                     result.type = FL_TYPE_STRING;
-                    result.data.string_val = (char*)malloc(256);
-                    snprintf(result.data.string_val, 256, "%s%s",
-                        a.type == FL_TYPE_STRING ? a.data.string_val : "?",
-                        b.type == FL_TYPE_STRING ? b.data.string_val : "?");
+                    size_t tlen = strlen(sa) + strlen(sb) + 1;
+                    result.data.string_val = (char*)malloc(tlen);
+                    if (result.data.string_val) {
+                        strcpy(result.data.string_val, sa);
+                        strcat(result.data.string_val, sb);
+                    }
                 } else {
                     /* Numeric addition */
                     result.type = FL_TYPE_FLOAT;
@@ -1226,17 +1465,26 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
                 fl_value_t key_val = fl_vm_pop(vm);
                 fl_value_t obj_val = fl_vm_pop(vm);
 
+                fl_value_t get_result;
+                get_result.type = FL_TYPE_NULL;  /* 기본값: null */
+
                 if (obj_val.type == FL_TYPE_OBJECT && key_val.type == FL_TYPE_STRING) {
                     fl_object_t *obj = obj_val.data.object_val;
                     const char *key = key_val.data.string_val;
 
-                    for (size_t i = 0; i < obj->size; i++) {
-                        if (strcmp(obj->keys[i], key) == 0) {
-                            fl_vm_push(vm, obj->values[i]);
-                            break;
+                    int found = 0;
+                    if (obj) {
+                        for (size_t i = 0; i < obj->size; i++) {
+                            if (obj->keys[i] && strcmp(obj->keys[i], key) == 0) {
+                                get_result = obj->values[i];
+                                found = 1;
+                                break;
+                            }
                         }
                     }
+                    (void)found;
                 }
+                fl_vm_push(vm, get_result);
                 break;
             }
 

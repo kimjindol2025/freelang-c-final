@@ -163,6 +163,36 @@ fl_value_t fl_log_error_builtin(fl_value_t* args, size_t argc);
 fl_value_t fl_log_flush_builtin(fl_value_t* args, size_t argc);
 fl_value_t fl_log_stats_builtin(fl_value_t* args, size_t argc);
 
+/* Compression Functions (MOSS-Compressor v1.0) - zlib 대체 네이티브 DEFLATE+GZIP */
+/* compress(bytes|string, level=6) -> bytes  — GZIP 포맷 */
+fl_value_t fl_compress(fl_value_t* args, size_t argc);
+/* decompress(bytes) -> bytes */
+fl_value_t fl_decompress(fl_value_t* args, size_t argc);
+/* gzip(bytes|string, level=6) -> bytes  [compress alias] */
+fl_value_t fl_gzip(fl_value_t* args, size_t argc);
+/* gunzip(bytes) -> bytes  [decompress alias] */
+fl_value_t fl_gunzip(fl_value_t* args, size_t argc);
+/* compress_ratio(orig, comp) -> float */
+fl_value_t fl_compress_ratio(fl_value_t* args, size_t argc);
+/* compress_info(bytes|string) -> object {original,compressed,ratio,savings_pct,simd_backend,should_compress} */
+fl_value_t fl_compress_info(fl_value_t* args, size_t argc);
+
+/* MOSS-Autodoc Functions (Phase 8) - Self-Documenting API Engine (Swagger 대체) */
+/* autodoc_init(title, version, description) -> null */
+fl_value_t fl_autodoc_init_builtin(fl_value_t* args, size_t argc);
+/* autodoc_register(name, path, method, summary, tag, returns) -> int (index) */
+fl_value_t fl_autodoc_register_builtin(fl_value_t* args, size_t argc);
+/* autodoc_add_param(name, type, desc, required) -> null */
+fl_value_t fl_autodoc_add_param_builtin(fl_value_t* args, size_t argc);
+/* autodoc_json() -> string (OpenAPI 3.0 JSON) */
+fl_value_t fl_autodoc_json_builtin(fl_value_t* args, size_t argc);
+/* autodoc_html() -> string (내장 HTML UI, 외부 CDN 0%) */
+fl_value_t fl_autodoc_html_builtin(fl_value_t* args, size_t argc);
+/* autodoc_routes_json() -> string (라우트 목록 경량 JSON) */
+fl_value_t fl_autodoc_routes_json_builtin(fl_value_t* args, size_t argc);
+/* autodoc_count() -> int (등록된 라우트 수) */
+fl_value_t fl_autodoc_count_builtin(fl_value_t* args, size_t argc);
+
 /* Register all stdlib functions */
 void fl_stdlib_register(fl_runtime_t* runtime);
 

@@ -50,6 +50,10 @@ static KeywordEntry keywords[] = {
     { "u8", TOK_U8 },               // Phase 6: unsigned 8-bit (pixel channel)
     { "aligned", TOK_ALIGNED },      // Phase 6: SIMD memory alignment
     { "vectorize", TOK_VECTORIZE },  // Phase 6: SIMD loop hint
+    /* Phase 8: MOSS-Kernel-Runner - @cluster/@autorestart/@daemon */
+    { "cluster",     TOK_IDENT },    // @cluster(n) 어노테이션
+    { "autorestart", TOK_IDENT },    // @autorestart(true) 어노테이션
+    { "daemon",      TOK_IDENT },    // @daemon 어노테이션
     { NULL, 0 }
 };
 

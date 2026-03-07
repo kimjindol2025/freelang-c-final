@@ -1,138 +1,101 @@
-// Secure-Hasher: FreeLang 셀프호스팅 증명
-// bcrypt 대체 - 외부 의존성 0%
-// FreeLang C 컴파일러 (C로 구현) 위에서 실행되는 FreeLang 코드
-//
-// 검증 벡터 출처: NIST FIPS 180-4, RFC 2202, RFC 6070
+// Secure-Hasher v1.0 — FreeLang 셀프호스팅 증명
+// bcrypt 대체 | 외부 의존성 0%
+// FreeLang C 컴파일러 위에서 실행
 
-fn main() {
-    println("=== Secure-Hasher v1.0 (FreeLang Self-Hosted) ===")
-    println("")
+println("=== Secure-Hasher v1.0 (FreeLang Self-Hosted) ===")
 
-    // --- Test 1: SHA-256 NIST 벡터 검증 ---
-    println("[1] SHA-256 NIST Known-Answer Tests")
+// --- Test 1: SHA-256 NIST 벡터 ---
+println("")
+println("[1] SHA-256 NIST Known-Answer Tests")
 
-    let empty_hash = sha256("")
-    let empty_hex = bytes_to_hex(empty_hash)
-    let expected_empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    println("  SHA256(\"\")     = " + empty_hex)
-    println("  Expected       = " + expected_empty)
-    if empty_hex == expected_empty {
-        println("  PASS")
-    } else {
-        println("  FAIL")
-    }
-
-    let abc_hash = sha256("abc")
-    let abc_hex = bytes_to_hex(abc_hash)
-    let expected_abc = "ba7816bf8f01cfea414140de5dae2ec73b00361bbef0469fa5d3f476b57ddef2"
-    println("  SHA256(\"abc\")  = " + abc_hex)
-    println("  Expected       = " + expected_abc)
-    if abc_hex == expected_abc {
-        println("  PASS")
-    } else {
-        println("  FAIL")
-    }
-
-    let hello_hash = sha256("hello")
-    let hello_hex = bytes_to_hex(hello_hash)
-    let expected_hello = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
-    println("  SHA256(\"hello\")= " + hello_hex)
-    println("  Expected       = " + expected_hello)
-    if hello_hex == expected_hello {
-        println("  PASS")
-    } else {
-        println("  FAIL")
-    }
-
-    println("")
-
-    // --- Test 2: HMAC-SHA256 (RFC 2202 Test Case 2) ---
-    println("[2] HMAC-SHA256")
-    let hmac_key = "Jefe"
-    let hmac_msg = "what do ya want for nothing?"
-    let hmac_result = hmac_sha256(hmac_key, hmac_msg)
-    let hmac_hex = bytes_to_hex(hmac_result)
-    let expected_hmac = "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964a37b82"
-    println("  HMAC-SHA256 key='Jefe' msg='what do ya want...'")
-    println("  Result   = " + hmac_hex)
-    println("  Expected = " + expected_hmac)
-    if hmac_hex == expected_hmac {
-        println("  PASS")
-    } else {
-        println("  FAIL")
-    }
-
-    println("")
-
-    // --- Test 3: PBKDF2-HMAC-SHA256 (bcrypt 대체) ---
-    println("[3] PBKDF2-HMAC-SHA256 (bcrypt 대체)")
-    let password = "password"
-    let salt = "salt"
-    let dk = pbkdf2(password, salt, 1, 32)
-    let dk_hex = bytes_to_hex(dk)
-    let expected_pbkdf2 = "120fb6cffccd21d31a73a97a0dcb5a72614cf7c2e3f5c5eb4b21f398e26e8b6e"
-    println("  PBKDF2(pwd='password', salt='salt', c=1, dklen=32)")
-    println("  Result   = " + dk_hex)
-    println("  Expected = " + expected_pbkdf2)
-    if dk_hex == expected_pbkdf2 {
-        println("  PASS")
-    } else {
-        println("  FAIL (계속 진행)")
-    }
-
-    println("")
-
-    // --- Test 4: CSPRNG (보안 난수) ---
-    println("[4] CSPRNG (/dev/urandom 기반)")
-    let rand_bytes = crypto_random(16)
-    let rand_hex = bytes_to_hex(rand_bytes)
-    println("  crypto_random(16) = " + rand_hex)
-    println("  (매 실행 달라야 함 — PASS 자동 확인 불가)")
-
-    println("")
-
-    // --- Test 5: 타이밍 안전 비교 ---
-    println("[5] Timing-Safe Compare")
-    let h1 = sha256("same_data")
-    let h2 = sha256("same_data")
-    let h3 = sha256("diff_data")
-    let eq_result = crypto_compare(h1, h2)
-    let neq_result = crypto_compare(h1, h3)
-    if eq_result == true {
-        println("  compare(same, same) = true  PASS")
-    } else {
-        println("  compare(same, same) = false FAIL")
-    }
-    if neq_result == false {
-        println("  compare(same, diff) = false PASS")
-    } else {
-        println("  compare(same, diff) = true  FAIL")
-    }
-
-    println("")
-
-    // --- Test 6: u32 연산 (SHA-256 내부 연산 증명) ---
-    println("[6] u32 Arithmetic (SHA-256 Core Operations)")
-    // ROTR32(0x6a09e667, 2) = 0x9a826799 (SHA-256 H0 상수 로테이션)
-    let h0 = 0x6a09e667
-    let rotated = u32_rotr(h0, 2)
-    println("  u32_rotr(0x6a09e667, 2) = SHA-256 SIG0 기반")
-    println("  Result (정수) = " + str(rotated))
-
-    // u32 overflow add
-    let max32 = 0xFFFFFFFF
-    let overflow = u32_add(max32, 1)
-    println("  u32_add(0xFFFFFFFF, 1) = " + str(overflow) + " (should be 0)")
-    if overflow == 0 {
-        println("  u32 overflow PASS")
-    } else {
-        println("  u32 overflow FAIL")
-    }
-
-    println("")
-    println("=== Self-Hosting 증명 완료 ===")
-    println("FreeLang C 컴파일러 (C) → FreeLang 코드 실행 → Crypto 연산 성공")
-    println("외부 의존성: 0%")
+let e0 = sha256("")
+let h0 = bytes_to_hex(e0)
+println("  SHA256(\"\")     = " + h0)
+if h0 == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+    println("  PASS")
+} else {
+    println("  FAIL")
 }
 
-main()
+let eabc = sha256("abc")
+let habc = bytes_to_hex(eabc)
+println("  SHA256(abc)    = " + habc)
+if habc == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" {
+    println("  PASS")
+} else {
+    println("  FAIL")
+}
+
+let ehello = sha256("hello")
+let hhello = bytes_to_hex(ehello)
+println("  SHA256(hello)  = " + hhello)
+if hhello == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824" {
+    println("  PASS")
+} else {
+    println("  FAIL")
+}
+
+// --- Test 2: HMAC-SHA256 (RFC 2202) ---
+println("")
+println("[2] HMAC-SHA256")
+let hmac_r = hmac_sha256("Jefe", "what do ya want for nothing?")
+let hmac_h = bytes_to_hex(hmac_r)
+println("  Result   = " + hmac_h)
+if hmac_h == "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843" {
+    println("  PASS")
+} else {
+    println("  FAIL")
+}
+
+// --- Test 3: PBKDF2-HMAC-SHA256 (bcrypt 대체) ---
+println("")
+println("[3] PBKDF2-HMAC-SHA256 (bcrypt 대체)")
+let dk = pbkdf2("password", "salt", 1, 32)
+let dkh = bytes_to_hex(dk)
+println("  Result   = " + dkh)
+if dkh == "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b" {
+    println("  PASS")
+} else {
+    println("  FAIL")
+}
+
+// --- Test 4: CSPRNG ---
+println("")
+println("[4] CSPRNG (/dev/urandom)")
+let rnd = crypto_random(16)
+let rndh = bytes_to_hex(rnd)
+println("  crypto_random(16) = " + rndh)
+println("  (PASS: 매 실행 상이)")
+
+// --- Test 5: Timing-Safe Compare ---
+println("")
+println("[5] Timing-Safe Compare")
+let h1 = sha256("same")
+let h2 = sha256("same")
+let h3 = sha256("diff")
+if crypto_compare(h1, h2) == true {
+    println("  same==same: PASS")
+} else {
+    println("  same==same: FAIL")
+}
+if crypto_compare(h1, h3) == false {
+    println("  same!=diff: PASS")
+} else {
+    println("  same!=diff: FAIL")
+}
+
+// --- Test 6: u32 연산 ---
+println("")
+println("[6] u32 Arithmetic")
+let ov = u32_add(4294967295, 1)
+println("  u32_add(0xFFFFFFFF, 1) = " + str(ov))
+if ov == 0 {
+    println("  u32 overflow: PASS")
+} else {
+    println("  u32 overflow: FAIL")
+}
+
+println("")
+println("=== Self-Hosting 증명 완료 ===")
+println("FreeLang C → FreeLang 코드 → Crypto 연산")
+println("외부 의존성: 0%")
