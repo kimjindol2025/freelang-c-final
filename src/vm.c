@@ -19,6 +19,7 @@
 #include "../include/introspect.h"
 #include "../include/logger.h"
 #include "../include/autodoc.h"
+#include "../include/smtp_client.h"
 #include <sys/wait.h>
 
 /* ============================================================
@@ -705,6 +706,22 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
         fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
         for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
         fl_vm_push(vm, fl_compress_info(args, (size_t)argc));
+        free(args);
+    /* MOSS-Mail-Core: SMTP 클라이언트 (nodemailer 대체) */
+    } else if (strcmp(name, "smtp_mail") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_smtp_mail(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "smtp_mail_tls") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_smtp_mail_tls(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "smtp_mime_encode") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_smtp_mime_encode(args, (size_t)argc));
         free(args);
     /* Phase 8: MOSS-Autodoc - Self-Documenting API Engine */
     } else if (strcmp(name, "autodoc_init") == 0) {
