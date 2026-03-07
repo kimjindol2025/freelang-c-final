@@ -15,6 +15,10 @@ fl_value_t fl_input(fl_value_t* args, size_t argc);
 fl_value_t fl_write_bytes_file(fl_value_t* args, size_t argc);
 fl_value_t fl_read_file(fl_value_t* args, size_t argc);
 
+/* Core Array Functions */
+fl_value_t fl_len(fl_value_t* args, size_t argc);
+fl_value_t fl_push(fl_value_t* args, size_t argc);
+
 /* String Functions (16) */
 fl_value_t fl_string_length(fl_value_t* args, size_t argc);
 fl_value_t fl_string_concat(fl_value_t* args, size_t argc);

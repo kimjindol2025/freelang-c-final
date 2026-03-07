@@ -1,0 +1,6 @@
+fn test_parse() {
+  let source = read_file("test-parser.free")
+  println("Source read, length: ")
+  println(len(source))
+}
+test_parse()

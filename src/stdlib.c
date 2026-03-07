@@ -1840,3 +1840,65 @@ fl_value_t fl_read_file(fl_value_t* args, size_t argc) {
     free(buffer);
     return result;
 }
+
+/* len(array) -> int */
+fl_value_t fl_len(fl_value_t* args, size_t argc) {
+    if (argc < 1) {
+        fprintf(stderr, "[STDLIB] len: Expected 1 argument\n");
+        return fl_new_int(0);
+    }
+
+    if (args[0].type == FL_TYPE_ARRAY) {
+        fl_array_t* arr = args[0].data.array_val;
+        if (arr) {
+            return fl_new_int(arr->size);
+        }
+        return fl_new_int(0);
+    }
+
+    if (args[0].type == FL_TYPE_STRING) {
+        const char* str = args[0].data.string_val;
+        if (str) {
+            return fl_new_int(strlen(str));
+        }
+        return fl_new_int(0);
+    }
+
+    fprintf(stderr, "[STDLIB] len: Argument must be array or string\n");
+    return fl_new_int(0);
+}
+
+/* push(array, value) */
+fl_value_t fl_push(fl_value_t* args, size_t argc) {
+    if (argc < 2) {
+        fprintf(stderr, "[STDLIB] push: Expected 2 arguments\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_ARRAY) {
+        fprintf(stderr, "[STDLIB] push: First argument must be an array\n");
+        return fl_new_null();
+    }
+
+    fl_array_t* arr = args[0].data.array_val;
+    if (!arr) {
+        fprintf(stderr, "[STDLIB] push: Array is NULL\n");
+        return fl_new_null();
+    }
+
+    /* Resize if needed */
+    if (arr->size >= arr->capacity) {
+        arr->capacity = (arr->capacity == 0) ? 10 : arr->capacity * 2;
+        fl_value_t* new_elements = realloc(arr->elements, arr->capacity * sizeof(fl_value_t));
+        if (!new_elements) {
+            fprintf(stderr, "[STDLIB] push: Memory allocation failed\n");
+            return fl_new_null();
+        }
+        arr->elements = new_elements;
+    }
+
+    arr->elements[arr->size] = args[1];
+    arr->size++;
+
+    return fl_new_null();
+}

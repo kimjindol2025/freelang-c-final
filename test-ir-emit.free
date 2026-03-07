@@ -1,0 +1,25 @@
+let ir_instructions = []
+
+fn ir_emit(opcode, operand1, operand2) {
+  push(ir_instructions, [opcode, operand1, operand2])
+}
+
+fn main() {
+  println("Testing ir_emit")
+  
+  ir_emit("PUSH", 1, 0)
+  ir_emit("CALL", 2, 3)
+  ir_emit("RET", 0, 0)
+  
+  println("Array length:")
+  println(len(ir_instructions))
+  
+  let i = 0
+  while (i < len(ir_instructions)) {
+    let instr = ir_instructions[i]
+    println("Instruction:")
+    println(instr[0])
+    i = i + 1
+  }
+}
+main()

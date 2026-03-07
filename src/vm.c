@@ -319,6 +319,24 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
         fl_value_t ret = fl_read_file(args, argc);
         fl_vm_push(vm, ret);
         free(args);
+    } else if (strcmp(name, "len") == 0) {
+        /* len(array/string) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_len(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "push") == 0) {
+        /* push(array, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_push(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;

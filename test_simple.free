@@ -1,0 +1,7 @@
+/* 최소 테스트: 배열 생성 및 출력 */
+fn main() {
+  let arr = [1, 2, 3]
+  println(len(arr))
+}
+
+main()
