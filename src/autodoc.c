@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include "../include/autodoc.h"
 
 /* ============================================================
@@ -136,13 +137,11 @@ static void sb_append(strbuf_t *sb, const char *str) {
 }
 
 static void sb_appendf(strbuf_t *sb, const char *fmt, ...) {
-    char tmp[4096];
+    char tmp[8192];
     va_list ap;
-    /* va_list 사용을 위해 헤더 필요 */
-    extern int vsprintf(char*, const char*, __builtin_va_list);
-    __builtin_va_start(ap, fmt);
+    va_start(ap, fmt);
     int n = vsnprintf(tmp, sizeof(tmp), fmt, ap);
-    __builtin_va_end(ap);
+    va_end(ap);
     if (n > 0) sb_append(sb, tmp);
 }
 

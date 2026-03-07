@@ -7,9 +7,10 @@
 npm, pip, gem 없이 언어 자체가 인프라입니다.
 
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Version](https://img.shields.io/badge/version-2.2.0-blue)
-![Code](https://img.shields.io/badge/code-19%2C000%2B%20lines-yellow)
+![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Code](https://img.shields.io/badge/code-18%2C700%2B%20lines-yellow)
 ![Deps](https://img.shields.io/badge/dependencies-0-success)
+![SIMD](https://img.shields.io/badge/SIMD-SSE2%2FAVX2%2FNEON-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
@@ -19,12 +20,13 @@ npm, pip, gem 없이 언어 자체가 인프라입니다.
 | 항목 | 내용 |
 |------|------|
 | **외부 의존성** | 0개 |
-| **총 코드** | 19,000+ 줄 |
-| **소스 파일** | 22개 (C) |
-| **키워드** | 37개 (u32/u64/intrinsic 포함) |
+| **총 코드** | 18,700+ 줄 |
+| **소스 파일** | 20개 C + 20개 헤더 |
+| **키워드** | 40개 (u8/aligned/vectorize 신규) |
 | **Opcode** | 54개 |
-| **표준 라이브러리** | 144+ 함수 |
+| **표준 라이브러리** | 150+ 함수 |
 | **대체한 npm 패키지** | helmet, bcrypt, sharp, pm2, cluster, zlib |
+| **SIMD 지원** | SSE2 / AVX2 / ARM NEON (자동 감지) |
 
 ---
 
@@ -162,27 +164,78 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 | `http_response(status, body)` | res.send() + helmet 미들웨어 |
 | `http_response_json(status, body)` | res.json() + helmet 미들웨어 |
 
-### Phase 7: Vector-Vision — sharp 대체
+### Phase 7: Vector-Vision — sharp/ImageMagick 대체
 
-외부 sharp/imagemagick 없이 이미지 처리 내장.
+**신규 문법**: `@vectorize`, `aligned`, `u8` 키워드
+libpng/libjpeg 0%. GCC `-O3 -ftree-vectorize` SIMD 자동 병렬화.
 
 ```freelang
-let img = vision_load("photo.raw", 640, 480, 3)
-let w   = vision_width(img)
-let h   = vision_height(img)
+// SIMD 가용 기능 확인
+let caps = vision_simd_caps()
+// → "Vector-Vision SIMD: SSE2(128bit) | GCC -O3 -ftree-vectorize"
+
+// PPM P6 (RGB) / PGM P5 (Grayscale) 로드
+let img = vision_load("photo.ppm")
+
+// @vectorize: 픽셀 루프 → SIMD 병렬 코드 자동 변환
+@vectorize {
+    let thumb = vision_resize(img, 300, 200, "lanczos")
+}
+
+// @vectorize(256): AVX2 256비트 모드 명시
+@vectorize(256) {
+    let gray = vision_grayscale(img)
+}
+
+// aligned: 32바이트 정렬 (AVX2 레지스터 폭 최적화)
+aligned let pixel_buf = bytes_new(1024)
+aligned(64) let avx512_buf = bytes_new(512)
+
+// BT.601 그레이스케일 변환
 let gray = vision_grayscale(img)
-let small = vision_resize(img, 320, 240)
+
+// Lanczos-3 고품질 리사이징
+let small = vision_resize(img, 320, 240, "lanczos")
+
+// 박스 블러 (반지름 2)
 let blurred = vision_blur(img, 2)
-vision_save(small, "thumbnail.raw")
+
+// 저장 (ppm / pgm)
+vision_save(small, "thumb.ppm", "ppm")
+
+// 픽셀 직접 조작 (u8 수준)
+vision_pixel_set(img, 10, 20, 0, 255)   // R채널 = 255
+let r = vision_pixel_get(img, 10, 20, 0)
 ```
 
-| 함수 | 대체 |
-|------|------|
-| `vision_load()` | sharp() |
-| `vision_resize()` | sharp().resize() |
-| `vision_grayscale()` | sharp().grayscale() |
-| `vision_blur()` | sharp().blur() |
-| `vision_pixel_get/set()` | Canvas API |
+**리사이징 알고리즘**:
+
+| 알고리즘 | 품질 | 속도 | 용도 |
+|---------|------|------|------|
+| `"nearest"` | 낮음 | 최고속 | 픽셀아트, 썸네일 프리뷰 |
+| `"bilinear"` | 중간 | 빠름 | 일반 리사이징 |
+| `"lanczos"` | 최고 | 보통 | 인쇄, 고품질 출력 |
+
+**BT.601 검증 결과** (실측):
+```
+vision_simd_caps()              → SSE2(128bit) 감지   ✓
+BT.601 Gray(255, 255, 255)      = 255                 ✓
+BT.601 Gray(255, 0,   0)        = 76    (0.299×255)   ✓
+BT.601 Gray(0,   255, 0)        = 149   (0.587×255)   ✓
+Lanczos sinc(x≈0)               = 1     (sinc(0)=1)   ✓
+pixel R=255, G=128, B=64 직접 읽기                     ✓
+```
+
+| 함수 | 대체 | 비고 |
+|------|------|------|
+| `vision_load(path)` | sharp() | PPM P6 / PGM P5 |
+| `vision_save(img, path, fmt)` | sharp().toFile() | ppm / pgm |
+| `vision_resize(img, w, h, algo)` | sharp().resize() | nearest/bilinear/lanczos |
+| `vision_grayscale(img)` | sharp().grayscale() | BT.601 정수 근사 |
+| `vision_blur(img, r)` | sharp().blur() | Box blur |
+| `vision_pixel_get/set()` | Canvas API | u8 직접 접근 |
+| `vision_info(img)` | sharp().metadata() | 크기/채널 정보 |
+| `vision_simd_caps()` | - | CPU SIMD 자동 감지 |
 
 ### Phase 8: Phoenix-Spawn — pm2/cluster 대체
 
@@ -244,6 +297,39 @@ FL_OP_DECOMPRESS  [bytes] → [bytes]
 | `gunzip(bytes)` | zlib.createGunzip() | RFC 1952 준수 |
 | `compress_ratio(a, b)` | - | - |
 | `compress_info(data)` | - | simd_backend 감지 |
+
+### Phase 10: Proof-Logger — winston/bunyan 대체
+
+SPSC 링버퍼 + io_uring 비동기 로깅. 콘솔/파일/HTTP(Gogs) 동시 출력.
+
+```freelang
+// 로그 설정
+log_configure("debug", "app.log")
+
+// 레벨별 로깅
+log_info("서버 시작")
+log_debug("요청 처리 중: " + path)
+log_warn("느린 쿼리 감지: " + duration + "ms")
+log_error("DB 연결 실패")
+
+// 통계 조회
+let stats = log_stats()
+println(stats)  // {"total":120,"dropped":0,"ring_usage":"12%"}
+
+// 명시적 플러시
+log_flush()
+
+// @log_level 어노테이션 (파서 수준 처리)
+@log_level(warn)
+fn criticalSection() { ... }
+```
+
+| 함수 | 대체 | 비고 |
+|------|------|------|
+| `log_configure(level, file)` | winston.createLogger() | SPSC 링버퍼 1024슬롯 |
+| `log_debug/info/warn/error()` | logger.debug/info() | JSON + ANSI 색상 |
+| `log_flush()` | logger.end() | io_uring 비동기 플러시 |
+| `log_stats()` | - | 드롭율, 링버퍼 점유율 |
 
 ---
 
@@ -372,15 +458,16 @@ make release      # 릴리즈 빌드 (-O3)
 
 ## Phase 구현 현황 요약
 
-| Phase | 이름 | 대체 | 상태 |
-|-------|------|------|------|
-| 1-3 | Language Core | - | ✅ |
-| 4 | MOSS-State Reactive | MobX/Redux | ✅ |
-| 5 | Crypto Engine | bcrypt/openssl | ✅ |
-| 6 | HTTP Secure-Pipeline | helmet | ✅ |
-| 7 | Vector-Vision | sharp/imagemagick | ✅ |
-| 8 | Phoenix-Spawn | pm2/cluster | ✅ |
-| 9 | MOSS-Compressor | **zlib/compression** | ✅ NEW |
+| Phase | 이름 | 대체 npm | 상태 | 특이사항 |
+|-------|------|---------|------|---------|
+| 1–3 | Language Core | - | ✅ | Lexer→Parser→Compiler→VM |
+| 4 | MOSS-State Reactive | MobX/Redux | ✅ | 읽기 0.169μs, 쓰기 0.865μs |
+| 5 | Crypto Engine | bcrypt/openssl | ✅ | SHA-256/HMAC/PBKDF2 FIPS 준수 |
+| 6 | HTTP Secure-Pipeline | helmet | ✅ | 7개 보안 헤더 자동 주입 |
+| 7 | **Vector-Vision** | **sharp/ImageMagick** | ✅ | **@vectorize/aligned/u8 신규** |
+| 8 | Phoenix-Spawn | pm2/cluster | ✅ | @cluster/@autorestart 어노테이션 |
+| 9 | MOSS-Compressor | zlib | ✅ | RFC 1951/1952, SIMD AVX2/NEON |
+| 10 | Proof-Logger | winston/bunyan | ✅ | SPSC 링버퍼, io_uring 비동기 |
 
 ## 저장소
 
@@ -388,6 +475,6 @@ make release      # 릴리즈 빌드 (-O3)
 
 ---
 
-**Version**: 2.2.0
+**Version**: 2.3.0
 **Status**: Production Ready
 **Updated**: 2026-03-08

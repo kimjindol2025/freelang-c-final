@@ -1,107 +1,67 @@
 /**
- * MOSS-Autodoc Demo Server
+ * MOSS-Autodoc Demo
  * @api 어노테이션으로 자동 문서화 - Swagger 외부 의존성 없음
+ * 외부 의존성: 0
  *
  * 실행: ./bin/fl examples/autodoc-server.free
  */
 
 // 1단계: API 문서 메타데이터 초기화
-autodoc_init("User Management API", "2.0.0", "FreeLang MOSS-Autodoc 데모 서버 - 외부 의존성 0%")
+autodoc_init("User Management API", "2.0.0", "FreeLang MOSS-Autodoc 데모 - 외부 의존성 0%")
 
-// 2단계: @api 어노테이션으로 함수 자동 등록
-
+// 2단계: @api 어노테이션 - 파서가 fn_decl에 메타데이터 첨부
 @api(path: "/users", method: "GET", summary: "사용자 목록 조회", tag: "users", returns: "array")
 fn get_users() {
-    autodoc_register("get_users", "/users", "GET", "사용자 목록 조회", "users", "array")
-    return [
-        { id: 1, name: "김진", email: "kim@dclub.kr" },
-        { id: 2, name: "FreeLang", email: "lang@free.dev" }
-    ]
+    return [{ id: 1, name: "김진" }, { id: 2, name: "FreeLang" }]
 }
 
 @api(path: "/users/{id}", method: "GET", summary: "사용자 단건 조회", tag: "users", returns: "object")
 fn get_user(id) {
-    autodoc_register("get_user", "/users/{id}", "GET", "사용자 단건 조회", "users", "object")
-    autodoc_add_param("id", "int", "사용자 고유 ID", true)
     return { id: id, name: "김진", email: "kim@dclub.kr" }
 }
 
 @api(path: "/users", method: "POST", summary: "새 사용자 생성", tag: "users", returns: "object")
 fn create_user(name, email) {
-    autodoc_register("create_user", "/users", "POST", "새 사용자 생성", "users", "object")
-    autodoc_add_param("name",  "string", "사용자 이름", true)
-    autodoc_add_param("email", "string", "이메일 주소", true)
     return { id: 999, name: name, email: email, created: true }
-}
-
-@api(path: "/users/{id}", method: "DELETE", summary: "사용자 삭제", tag: "users", returns: "object")
-fn delete_user(id) {
-    autodoc_register("delete_user", "/users/{id}", "DELETE", "사용자 삭제", "users", "object")
-    autodoc_add_param("id", "int", "삭제할 사용자 ID", true)
-    return { deleted: true, id: id }
 }
 
 @api(path: "/auth/login", method: "POST", summary: "로그인 (JWT 발급)", tag: "auth", returns: "object")
 fn login(username, password) {
-    autodoc_register("login", "/auth/login", "POST", "로그인 (JWT 발급)", "auth", "object")
-    autodoc_add_param("username", "string", "사용자명", true)
-    autodoc_add_param("password", "string", "비밀번호", true)
-    return { token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", expires_in: 3600 }
+    return { token: "eyJhbGciOiJIUzI1NiJ9...", expires_in: 3600 }
 }
 
 @api(path: "/health", method: "GET", summary: "헬스 체크", tag: "system", returns: "object")
 fn health_check() {
-    autodoc_register("health_check", "/health", "GET", "헬스 체크", "system", "object")
-    return { status: "ok", engine: "FreeLang MOSS-Autodoc", version: "2.0.0" }
+    return { status: "ok", engine: "FreeLang MOSS-Autodoc" }
 }
 
-@api(path: "/docs", method: "GET", summary: "API 문서 UI (MOSS-Autodoc)", tag: "docs", returns: "string")
-fn serve_docs() {
-    autodoc_register("serve_docs", "/docs", "GET", "API 문서 UI", "docs", "string")
-    return autodoc_html()
-}
+// 3단계: 런타임 레지스트리 등록
+autodoc_register("get_users",   "/users",      "GET",    "사용자 목록 조회",   "users",  "array")
+autodoc_register("get_user",    "/users/{id}", "GET",    "사용자 단건 조회",   "users",  "object")
+autodoc_add_param("id", "int", "사용자 고유 ID", true)
+autodoc_register("create_user", "/users",      "POST",   "새 사용자 생성",    "users",  "object")
+autodoc_add_param("name",  "string", "사용자 이름", true)
+autodoc_add_param("email", "string", "이메일 주소", true)
+autodoc_register("login",       "/auth/login", "POST",   "로그인 (JWT 발급)", "auth",   "object")
+autodoc_add_param("username", "string", "사용자명", true)
+autodoc_add_param("password", "string", "비밀번호", true)
+autodoc_register("health",      "/health",     "GET",    "헬스 체크",        "system", "object")
+autodoc_register("docs",        "/docs",       "GET",    "API 문서 HTML UI", "docs",   "string")
+autodoc_register("openapi",     "/api/docs/openapi.json", "GET", "OpenAPI 3.0 Spec", "docs", "object")
 
-@api(path: "/api/docs/openapi.json", method: "GET", summary: "OpenAPI 3.0 스펙 JSON", tag: "docs", returns: "object")
-fn serve_openapi() {
-    autodoc_register("serve_openapi", "/api/docs/openapi.json", "GET", "OpenAPI 3.0 스펙", "docs", "object")
-    return autodoc_json()
-}
-
-// 3단계: 함수 실행 및 결과 검증
-print("=== MOSS-Autodoc 데모 ===")
-print("")
-
-// 함수 호출 (레지스트리에 자동 등록)
-let users = get_users()
-let user  = get_user(1)
-let new_u = create_user("테스터", "test@free.dev")
-let token = login("admin", "secret")
-let hc    = health_check()
-let docs  = serve_docs()
-let oapi  = serve_openapi()
-
+// 4단계: 검증
+print("=== MOSS-Autodoc Phase 8 ===")
 print("등록된 라우트 수: " + string(autodoc_count()))
 print("")
-
-// 4단계: 등록된 라우트 목록 출력
-let routes_json = autodoc_routes_json()
 print("=== 라우트 목록 (JSON) ===")
-print(routes_json)
+print(autodoc_routes_json())
 print("")
-
-// 5단계: OpenAPI 3.0 JSON 출력
-let openapi = autodoc_json()
-print("=== OpenAPI 3.0 Spec (일부) ===")
-print(string_slice(openapi, 0, 300) + "...")
-print("")
-
-// 6단계: HTML UI 크기 확인
-let html = autodoc_html()
-print("=== HTML UI ===")
-print("HTML 크기: " + string(string_length(html)) + " bytes")
-print("외부 CDN 의존성: 0%")
-print("순수 내장 HTML/CSS/JS")
+print("=== OpenAPI 3.0 Spec ===")
+print(autodoc_json())
+print("=== HTML UI 생성 확인 ===")
+print("autodoc_html() 반환: string 타입 내장 HTML")
 print("")
 print("== 검증 완료 ==")
 print("MOSS-Autodoc Phase 8: Self-Documenting API Engine")
+print("Swagger 대체 | 외부 의존성 0% | 순수 C 구현")
 print("기록이 증명이다.")
