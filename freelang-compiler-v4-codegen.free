@@ -1,0 +1,251 @@
+/*
+ * FreeLang Compiler v4-CodeGen
+ * Phase 2.3 + Phase 3: IR Generator → Code Generator (x86-64)
+ *
+ * 전략:
+ * 1. FreeLang: IR 생성 (JSON 형식)
+ * 2. C/JS: IR → x86-64 → ELF 변환
+ */
+
+/* ============================================================
+   PART 1: Lexer (기존)
+   ============================================================ */
+
+fn is_whitespace(ch) {
+  if (ch == " ") { return true }
+  if (ch == "\t") { return true }
+  if (ch == "\n") { return true }
+  if (ch == "\r") { return true }
+  return false
+}
+
+fn is_digit(ch) {
+  if (ch >= "0" && ch <= "9") { return true }
+  return false
+}
+
+fn is_alpha(ch) {
+  if (ch >= "a" && ch <= "z") { return true }
+  if (ch >= "A" && ch <= "Z") { return true }
+  if (ch == "_") { return true }
+  return false
+}
+
+/* ============================================================
+   PART 2: IR Generator with Code Generation Info
+   ============================================================ */
+
+fn generate_ir_with_code() {
+  /* 로컬 배열 사용 - 안전함 */
+  let ir = []
+  let consts = []
+  let code_bytes = []
+
+  println("=== Phase 3: IR → Code Generation ===")
+
+  /* 배열 생성 */
+  let create_array_ir = []
+  push(create_array_ir, "CREATE_ARRAY")
+  push(create_array_ir, -1)
+  push(create_array_ir, -1)
+  push(ir, create_array_ir)
+  println("IR[0]: CREATE_ARRAY")
+
+  /* 상수: "hello" */
+  push(consts, "hello")
+  println("CONST[0]: \"hello\"")
+
+  /* 상수: "world" */
+  push(consts, "world")
+  println("CONST[1]: \"world\"")
+
+  /* push "hello" */
+  let push_hello = []
+  push(push_hello, "ARRAY_PUSH")
+  push(push_hello, 0)
+  push(push_hello, 0)
+  push(ir, push_hello)
+  println("IR[1]: ARRAY_PUSH (const_idx=0)")
+
+  /* push "world" */
+  let push_world = []
+  push(push_world, "ARRAY_PUSH")
+  push(push_world, 1)
+  push(push_world, 1)
+  push(ir, push_world)
+  println("IR[2]: ARRAY_PUSH (const_idx=1)")
+
+  /* ARRAY_LEN */
+  let len_op = []
+  push(len_op, "ARRAY_LEN")
+  push(len_op, -1)
+  push(len_op, -1)
+  push(ir, len_op)
+  println("IR[3]: ARRAY_LEN")
+
+  /* ARRAY_GET [0] */
+  let get_0 = []
+  push(get_0, "ARRAY_GET")
+  push(get_0, 0)
+  push(get_0, -1)
+  push(ir, get_0)
+  println("IR[4]: ARRAY_GET (idx=0)")
+
+  /* ARRAY_GET [1] */
+  let get_1 = []
+  push(get_1, "ARRAY_GET")
+  push(get_1, 1)
+  push(get_1, -1)
+  push(ir, get_1)
+  println("IR[5]: ARRAY_GET (idx=1)")
+
+  println("")
+  println("Total IR instructions: " + len(ir))
+  println("Total constants: " + len(consts))
+
+  return ir
+}
+
+/* ============================================================
+   PART 3: Code Generation Info (x86-64 매핑)
+   ============================================================ */
+
+fn print_codegen_plan(ir) {
+  println("")
+  println("=== Code Generation Plan (x86-64) ===")
+  println("")
+
+  println("Runtime Helpers:")
+  println("  array_create() → rax")
+  println("  array_push(rdi:arr, rsi:val)")
+  println("  array_get(rdi:arr, rsi:idx) → rax")
+  println("  array_len(rdi:arr) → rax")
+  println("")
+
+  println("Main Code:")
+  println("  [0] CREATE_ARRAY:")
+  println("      call array_create    ; rax = new array")
+  println("      mov rbx, rax        ; rbx = array ptr")
+  println("")
+
+  println("  [1] ARRAY_PUSH (hello):")
+  println("      mov rdi, rbx        ; rdi = array")
+  println("      mov rsi, <ptr to \"hello\">")
+  println("      call array_push")
+  println("")
+
+  println("  [2] ARRAY_PUSH (world):")
+  println("      mov rdi, rbx")
+  println("      mov rsi, <ptr to \"world\">")
+  println("      call array_push")
+  println("")
+
+  println("  [3] ARRAY_LEN:")
+  println("      mov rdi, rbx")
+  println("      call array_len      ; rax = length")
+  println("      mov rcx, rax")
+  println("      call print_int      ; print(len)")
+  println("")
+
+  println("  [4] ARRAY_GET [0]:")
+  println("      mov rdi, rbx")
+  println("      mov rsi, 0")
+  println("      call array_get      ; rax = arr[0]")
+  println("      call print_string   ; print(hello)")
+  println("")
+
+  println("  [5] ARRAY_GET [1]:")
+  println("      mov rdi, rbx")
+  println("      mov rsi, 1")
+  println("      call array_get      ; rax = arr[1]")
+  println("      call print_string   ; print(world)")
+  println("")
+
+  println("Expected Output:")
+  println("  2")
+  println("  hello")
+  println("  world")
+}
+
+/* ============================================================
+   PART 4: Code Generation to x86-64 (상세 매핑)
+   ============================================================ */
+
+fn generate_x86_code(ir) {
+  println("")
+  println("=== Generated x86-64 Assembly ===")
+  println("")
+
+  let i = 0
+  let offset = 0
+
+  while (i < len(ir)) {
+    let instr = ir[i]
+    let opcode = instr[0]
+
+    if (opcode == "CREATE_ARRAY") {
+      println("0x" + offset + ": e8 __ __ __ __  call array_create")
+      offset = offset + 5
+    }
+
+    if (opcode == "ARRAY_PUSH") {
+      println("0x" + offset + ": bf __ __ __ __  mov rdi, <array>")
+      offset = offset + 5
+      println("0x" + offset + ": be __ __ __ __  mov rsi, <const>")
+      offset = offset + 5
+      println("0x" + offset + ": e8 __ __ __ __  call array_push")
+      offset = offset + 5
+    }
+
+    if (opcode == "ARRAY_GET") {
+      println("0x" + offset + ": bf __ __ __ __  mov rdi, <array>")
+      offset = offset + 5
+      println("0x" + offset + ": be " + instr[1] + " __ __ __  mov rsi, " + instr[1])
+      offset = offset + 5
+      println("0x" + offset + ": e8 __ __ __ __  call array_get")
+      offset = offset + 5
+    }
+
+    if (opcode == "ARRAY_LEN") {
+      println("0x" + offset + ": e8 __ __ __ __  call array_len")
+      offset = offset + 5
+    }
+
+    i = i + 1
+  }
+
+  println("")
+  println("Total Code Size: ~" + offset + " bytes")
+  println("(Excluding runtime helpers)")
+}
+
+/* ============================================================
+   PART 5: Generate IR and Plan
+   ============================================================ */
+
+fn main() {
+  println("===============================================")
+  println("FreeLang Compiler - Phase 3: Code Generation")
+  println("===============================================")
+  println("")
+
+  let ir = generate_ir_with_code()
+
+  print_codegen_plan(ir)
+
+  generate_x86_code(ir)
+
+  println("")
+  println("===============================================")
+  println("✅ Code Generation Plan Complete")
+  println("")
+  println("Next Step: Generate ELF binary with C/JS")
+  println("  1. Parse IR above")
+  println("  2. Allocate registers (rbx=array, rcx=temp)")
+  println("  3. Generate x86-64 machine code")
+  println("  4. Create ELF header + sections")
+  println("  5. Output executable binary")
+  println("===============================================")
+}
+
+main()
