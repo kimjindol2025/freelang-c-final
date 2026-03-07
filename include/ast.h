@@ -134,6 +134,13 @@ typedef struct fl_ast_node {
             int is_generic;         /* 1 if fn<T>(...) */
             char **generic_params;  /* for fn<T, U>(...) */
             int generic_param_count;
+            /* Phase 8: MOSS-Autodoc - @api annotation metadata */
+            int  has_api_annotation;   /* 1 if @api decorator present */
+            char api_path[512];        /* HTTP path: "/users/{id}" */
+            char api_method[16];       /* "GET", "POST", etc */
+            char api_summary[512];     /* summary description */
+            char api_tag[128];         /* grouping tag */
+            char api_returns[64];      /* return type hint */
         } fn_decl;
 
         /* ================================================================

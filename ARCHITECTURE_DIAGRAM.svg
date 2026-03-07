@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="1400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .module { fill: #e8f4f8; stroke: #0277bd; stroke-width: 2; }
+      .main-module { fill: #b3e5fc; stroke: #01579b; stroke-width: 2; }
+      .data-module { fill: #fff9c4; stroke: #f57f17; stroke-width: 2; }
+      .text { font-family: Arial, sans-serif; font-size: 12px; }
+      .title { font-size: 18px; font-weight: bold; }
+      .subtitle { font-size: 13px; font-weight: bold; }
+      .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .label { font-size: 11px; fill: #666; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="30" class="title" text-anchor="middle">FreeLang C Runtime — 완전 아키텍처 (12,473줄)</text>
+
+  <!-- Input -->
+  <rect x="450" y="60" width="300" height="50" class="module" />
+  <text x="600" y="92" class="text" text-anchor="middle" font-weight="bold">소스 코드 (.fl)</text>
+
+  <!-- Arrow -->
+  <path d="M 600 110 L 600 140" class="arrow" />
+
+  <!-- Pipeline -->
+  <g id="pipeline">
+    <!-- LEXER -->
+    <rect x="420" y="140" width="180" height="80" class="main-module" />
+    <text x="510" y="162" class="subtitle" text-anchor="middle">LEXER (499줄)</text>
+    <text x="510" y="182" class="label" text-anchor="middle">62 토큰 타입</text>
+    <text x="510" y="197" class="label" text-anchor="middle">28 키워드, 26 연산자</text>
+
+    <path d="M 600 220 L 600 250" class="arrow" />
+
+    <!-- PARSER -->
+    <rect x="420" y="250" width="180" height="80" class="main-module" />
+    <text x="510" y="272" class="subtitle" text-anchor="middle">PARSER (973줄)</text>
+    <text x="510" y="292" class="label" text-anchor="middle">40 파싱 함수</text>
+    <text x="510" y="307" class="label" text-anchor="middle">47 AST 노드 타입</text>
+
+    <path d="M 600 330 L 600 360" class="arrow" />
+
+    <!-- TYPE CHECKER -->
+    <rect x="380" y="360" width="220" height="80" class="main-module" />
+    <text x="490" y="382" class="subtitle" text-anchor="middle">TYPE CHECKER (945줄)</text>
+    <text x="490" y="402" class="label" text-anchor="middle">49 타입 검증 함수</text>
+    <text x="490" y="417" class="label" text-anchor="middle">9 Value 타입, 13 에러 타입</text>
+
+    <path d="M 600 440 L 600 470" class="arrow" />
+
+    <!-- COMPILER -->
+    <rect x="380" y="470" width="220" height="80" class="main-module" />
+    <text x="490" y="492" class="subtitle" text-anchor="middle">COMPILER (1,312줄)</text>
+    <text x="490" y="512" class="label" text-anchor="middle">26 컴파일 함수</text>
+    <text x="490" y="527" class="label" text-anchor="middle">AST → Bytecode (Chunk)</text>
+
+    <path d="M 600 550 L 600 580" class="arrow" />
+
+    <!-- VM -->
+    <rect x="350" y="580" width="250" height="100" class="main-module" />
+    <text x="475" y="602" class="subtitle" text-anchor="middle">VM - Virtual Machine (1,245줄)</text>
+    <text x="475" y="622" class="label" text-anchor="middle">45 Opcode, Stack-based</text>
+    <text x="475" y="642" class="label" text-anchor="middle">Stack: 10,000 슬롯</text>
+    <text x="475" y="657" class="label" text-anchor="middle">Frames: 256 깊이</text>
+
+    <!-- Result -->
+    <path d="M 600 680 L 600 710" class="arrow" />
+
+    <rect x="420" y="710" width="180" height="60" class="data-module" />
+    <text x="510" y="732" class="subtitle" text-anchor="middle">실행 결과</text>
+    <text x="510" y="752" class="label" text-anchor="middle">fl_value_t (9 타입)</text>
+  </g>
+
+  <!-- Support Systems (Left) -->
+  <g id="left-support">
+    <rect x="50" y="580" width="140" height="80" class="data-module" />
+    <text x="120" y="602" class="subtitle" text-anchor="middle">GC</text>
+    <text x="120" y="622" class="label" text-anchor="middle">913줄, 28함수</text>
+    <text x="120" y="637" class="label" text-anchor="middle">Mark-sweep</text>
+    <path d="M 190 620 L 350 620" class="arrow" />
+
+    <rect x="50" y="700" width="140" height="80" class="data-module" />
+    <text x="120" y="722" class="subtitle" text-anchor="middle">STDLIB</text>
+    <text x="120" y="742" class="label" text-anchor="middle">1,737줄, 76함수</text>
+    <text x="120" y="757" class="label" text-anchor="middle">내장 함수 라이브러리</text>
+    <path d="M 190 740 L 350 740" class="arrow" />
+
+    <rect x="50" y="820" width="140" height="80" class="data-module" />
+    <text x="120" y="842" class="subtitle" text-anchor="middle">RUNTIME</text>
+    <text x="120" y="862" class="label" text-anchor="middle">619줄, 11함수</text>
+    <text x="120" y="877" class="label" text-anchor="middle">런타임 시스템</text>
+    <path d="M 190 860 L 350 860" class="arrow" />
+  </g>
+
+  <!-- Support Systems (Right) -->
+  <g id="right-support">
+    <rect x="1010" y="580" width="140" height="80" class="data-module" />
+    <text x="1080" y="602" class="subtitle" text-anchor="middle">CLOSURE</text>
+    <text x="1080" y="622" class="label" text-anchor="middle">215줄, 11함수</text>
+    <text x="1080" y="637" class="label" text-anchor="middle">변수 capture</text>
+    <path d="M 1010 620 L 850 620" class="arrow" />
+
+    <rect x="1010" y="700" width="140" height="80" class="data-module" />
+    <text x="1080" y="722" class="subtitle" text-anchor="middle">ERROR</text>
+    <text x="1080" y="742" class="label" text-anchor="middle">466줄, 24함수</text>
+    <text x="1080" y="757" class="label" text-anchor="middle">에러 처리</text>
+    <path d="M 1010 740 L 850 740" class="arrow" />
+
+    <rect x="1010" y="820" width="140" height="80" class="data-module" />
+    <text x="1080" y="842" class="subtitle" text-anchor="middle">AST</text>
+    <text x="1080" y="862" class="label" text-anchor="middle">606줄, 29함수</text>
+    <text x="1080" y="877" class="label" text-anchor="middle">노드 관리</text>
+    <path d="M 1010 860 L 850 860" class="arrow" />
+  </g>
+
+  <!-- Statistics -->
+  <g id="stats">
+    <rect x="50" y="950" width="1100" height="400" fill="none" stroke="#ccc" stroke-width="1" stroke-dasharray="5,5" />
+    
+    <text x="600" y="980" class="title" text-anchor="middle">📊 종합 통계</text>
+
+    <!-- Left column -->
+    <text x="80" y="1020" class="subtitle">구성</text>
+    <text x="100" y="1045" class="text">✅ 총 코드: 12,473줄</text>
+    <text x="100" y="1065" class="text">✅ Header: 2,628줄 (13파일)</text>
+    <text x="100" y="1085" class="text">✅ Source: 9,845줄 (13파일)</text>
+    <text x="100" y="1105" class="text">✅ 총 함수: ~330개</text>
+
+    <text x="80" y="1145" class="subtitle">언어 기능</text>
+    <text x="100" y="1170" class="text">✅ Token 타입: 62개</text>
+    <text x="100" y="1190" class="text">✅ AST 노드: 47개</text>
+    <text x="100" y="1210" class="text">✅ Opcode: 45개</text>
+    <text x="100" y="1230" class="text">✅ Value 타입: 9개</text>
+
+    <!-- Middle column -->
+    <text x="420" y="1020" class="subtitle">VM 성능</text>
+    <text x="440" y="1045" class="text">📊 Stack: 10,000 슬롯</text>
+    <text x="440" y="1065" class="text">📊 Frame depth: 256 레벨</text>
+    <text x="440" y="1085" class="text">📊 Locals/frame: 256개</text>
+    <text x="440" y="1105" class="text">📊 Max recursion: 256</text>
+
+    <text x="420" y="1145" class="subtitle">주요 모듈</text>
+    <text x="440" y="1170" class="text">📦 Compiler: 1,312줄 (26함수)</text>
+    <text x="440" y="1190" class="text">📦 VM: 1,245줄 (19함수)</text>
+    <text x="440" y="1210" class="text">📦 Stdlib: 1,737줄 (76함수)</text>
+    <text x="440" y="1230" class="text">📦 Parser: 973줄 (40함수)</text>
+
+    <!-- Right column -->
+    <text x="760" y="1020" class="subtitle">특징</text>
+    <text x="780" y="1045" class="text">✅ 타입 안전: Type checker 내장</text>
+    <text x="780" y="1065" class="text">✅ 메모리 관리: GC 내장</text>
+    <text x="780" y="1085" class="text">✅ 예외 처리: try-catch-finally</text>
+    <text x="780" y="1105" class="text">✅ 클로저: 변수 capture + upvalue</text>
+
+    <text x="760" y="1145" class="subtitle">지원</text>
+    <text x="780" y="1170" class="text">🔧 함수형 프로그래밍</text>
+    <text x="780" y="1190" class="text">🔧 모듈 시스템</text>
+    <text x="780" y="1210" class="text">🔧 제네릭 타입</text>
+    <text x="780" y="1230" class="text">🔧 비동기 (async/await)</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="50" y="1380" width="20" height="20" class="main-module" />
+    <text x="80" y="1395" class="text">주요 모듈 (Compiler/VM/Parser)</text>
+
+    <rect x="350" y="1380" width="20" height="20" class="data-module" />
+    <text x="370" y="1395" class="text">지원 시스템 (GC/Stdlib/Runtime)</text>
+  </g>
+</svg>

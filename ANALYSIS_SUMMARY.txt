@@ -1,0 +1,354 @@
+================================================================================
+  FreeLang C Runtime — 완전 코드 구조 분석 보고서 (2026-03-06)
+================================================================================
+
+프로젝트: /home/kimjin/Desktop/kim/freelang-c/
+총 코드: 12,473줄 (Header 2,628 + Source 9,845)
+모듈: 13개
+함수: ~330개 (추정)
+
+================================================================================
+  📊 코드 분포 요약
+================================================================================
+
+HEADER FILES (2,628줄):
+  ✓ ast.h (586줄)              - 47개 노드 타입 정의
+  ✓ typechecker.h (575줄)      - 타입 검증 인터페이스
+  ✓ gc.h (361줄)               - GC 알고리즘 명세
+  ✓ freelang.h (254줄)         - 메인 헤더 (타입, opcode)
+  ✓ error.h (164줄)            - 에러 처리 인터페이스
+  ✓ compiler.h (158줄)         - 컴파일러 인터페이스
+  ✓ token.h (115줄)            - 62개 토큰 정의
+  ✓ closure.h (104줄)          - 클로저 구조
+  ✓ stdlib_fl.h (92줄)         - 표준 라이브러리
+  ✓ runtime.h (79줄)           - 런타임 인터페이스
+  ✓ vm.h (68줄)                - VM 인터페이스
+  ✓ lexer.h (38줄)             - 렉서 인터페이스
+  ✓ parser.h (34줄)            - 파서 인터페이스
+
+SOURCE FILES (9,845줄):
+  ✓ stdlib.c (1,737줄, 76함수)   - 표준 함수 라이브러리
+  ✓ compiler.c (1,312줄, 26함수) - AST → Bytecode 컴파일러
+  ✓ vm.c (1,245줄, 19함수)       - Stack-based 실행 엔진
+  ✓ parser.c (973줄, 40함수)     - Token → AST 파서
+  ✓ typechecker.c (945줄, 49함수)- 타입 검증
+  ✓ gc.c (913줄, 28함수)         - Mark-sweep GC
+  ✓ runtime.c (619줄, 11함수)    - 런타임 통합
+  ✓ ast.c (606줄, 29함수)        - AST 노드 관리
+  ✓ lexer.c (499줄, 18함수)      - 토큰화
+  ✓ error.c (466줄, 24함수)      - 에러 처리
+  ✓ closure.c (215줄, 11함수)    - 클로저 지원
+  ✓ main.c (186줄, 1함수)        - 진입점
+  ✓ token.c (129줄, 4함수)       - 토큰 유틸리티
+
+================================================================================
+  🔴 핵심 파이프라인
+================================================================================
+
+소스 코드 (.fl)
+    ↓
+┌─────────────────────────────────┐
+│  LEXER (499줄)                  │  62 토큰 타입
+│  • 상태 머신 기반               │  28 키워드
+│  • HashMap 키워드 조회          │  26 연산자
+│  • 동적 토큰 배열               │  13 구두점
+└─────────────────────────────────┘
+    ↓ Token Stream
+┌─────────────────────────────────┐
+│  PARSER (973줄)                 │  47 AST 노드 타입
+│  • Recursive descent            │  40 파싱 함수
+│  • 우선순위 처리               │  ~600 byte/node
+│  • 구문 트리 생성               │
+└─────────────────────────────────┘
+    ↓ AST
+┌─────────────────────────────────┐
+│  TYPE CHECKER (945줄)           │  9 Value 타입
+│  • Type inference               │  13 Error 타입
+│  • 호환성 검사                 │  49 검증 함수
+│  • Generic 지원                 │
+└─────────────────────────────────┘
+    ↓ Type-validated AST
+┌─────────────────────────────────┐
+│  COMPILER (1,312줄)             │  45 Opcode
+│  • AST → Bytecode              │  Constants pool
+│  • 로컬 변수 추적              │  26 컴파일 함수
+│  • 클로저 capture analysis     │
+└─────────────────────────────────┘
+    ↓ Bytecode Chunk
+┌─────────────────────────────────┐
+│  VM EXECUTION (1,245줄)         │  Stack: 10,000
+│  • Stack-based 실행             │  Frames: 256 depth
+│  • Exception handling          │  Locals: 256/frame
+│  • Closure context             │
+└─────────────────────────────────┘
+    ↓ fl_value_t (9 types)
+    
+Support Systems:
+  • GC (913줄) - Mark-sweep 메모리 관리
+  • Stdlib (1,737줄) - 76개 내장 함수
+  • Runtime (619줄) - 통합 관리
+  • Error (466줄) - 예외 처리
+  • Closure (215줄) - 클로저 구현
+
+================================================================================
+  🔵 Token 정의 (62개)
+================================================================================
+
+Literals (4):
+  NUMBER, STRING, FSTRING, IDENT
+
+Keywords (28):
+  LET, CONST, VAR, FN
+  IF, ELSE, WHILE, FOR, IN
+  RETURN, BREAK, CONTINUE
+  TRUE, FALSE, NULL
+  STRUCT, ENUM
+  TRY, CATCH, FINALLY, THROW
+  IMPORT, FROM, EXPORT, DEFAULT, AS
+  ASYNC, AWAIT, MATCH
+
+Operators (26):
+  PLUS, MINUS, STAR, SLASH, PERCENT, POWER
+  EQ, EQEQ, EQEQEQ
+  NOT, NOTEQ, NOTEQUALEQ
+  LT, LTEQ, GT, GTEQ
+  AND, OR, AMPERSAND, PIPE, CARET, TILDE
+  LSHIFT, RSHIFT, ARROW, QUESTION
+
+Punctuation (13):
+  LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET
+  COMMA, DOT, SEMICOLON, COLON
+  AT, HASH, DOLLAR
+
+Compound (4):
+  PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ
+
+Special (2):
+  NEWLINE, EOF
+
+================================================================================
+  🟢 AST 노드 (47개)
+================================================================================
+
+Program & Module (1):
+  PROGRAM
+
+Declarations (4):
+  VAR_DECL, FN_DECL, STRUCT_DECL, ENUM_DECL
+
+Module System (2):
+  IMPORT, EXPORT
+
+Statements (10):
+  BLOCK, IF, WHILE, FOR, FOR_IN,
+  RETURN, BREAK, CONTINUE, TRY, THROW
+
+Expressions (7):
+  BINARY, UNARY, LOGICAL, CALL, MEMBER, ASSIGN, TERNARY
+
+Collections (3):
+  ARRAY, OBJECT, PROPERTY
+
+Advanced (5):
+  FN_EXPR, ARROW_FN, AWAIT, FSTRING, QUESTION_OP
+
+Identifiers (2):
+  IDENT, LITERAL
+
+Clauses (2):
+  CATCH_CLAUSE, FINALLY_CLAUSE
+
+================================================================================
+  🟠 Opcode 정의 (45개)
+================================================================================
+
+Stack Operations (7):
+  PUSH_NULL, PUSH_BOOL, PUSH_INT, PUSH_FLOAT, PUSH_STRING, POP, DUP
+
+Arithmetic (5):
+  ADD, SUB, MUL, DIV, MOD
+
+Comparison (6):
+  EQ, NEQ, LT, LTE, GT, GTE
+
+Logic (3):
+  AND, OR, NOT
+
+Control Flow (5):
+  JMP, JMPT, JMPF, CALL, RET
+
+Variables (4):
+  LOAD_LOCAL, STORE_LOCAL, LOAD_GLOBAL, STORE_GLOBAL
+
+Arrays (4):
+  ARRAY_NEW, ARRAY_GET, ARRAY_SET, ARRAY_LEN
+
+Objects (3):
+  OBJECT_NEW, OBJECT_GET, OBJECT_SET
+
+Exceptions (4):
+  TRY_START, CATCH_START, CATCH_END, THROW
+
+Closures (3):
+  MAKE_CLOSURE, LOAD_UPVALUE, STORE_UPVALUE
+
+Other (2):
+  HALT, NOP
+
+================================================================================
+  🟣 Value Types (9개)
+================================================================================
+
+Primitive (5):
+  NULL
+  BOOL           (true/false)
+  INT            (int64_t)
+  FLOAT          (double)
+  STRING         (UTF-8)
+
+Compound (3):
+  ARRAY          (dynamic array, fl_array_t)
+  OBJECT         (key-value map, fl_object_t)
+
+Function (2):
+  FUNCTION       (user-defined, fl_function_t)
+  CLOSURE        (function + captured vars, fl_closure_t)
+
+Error:
+  ERROR          (fl_error_t)
+
+================================================================================
+  🟤 VM Architecture
+================================================================================
+
+VM Structure:
+  Stack:           10,000 slots (fl_value_t)
+  Call Frames:     256 depth limit
+  Locals:          256 per frame
+  Globals:         fl_object_t (key-value map)
+  GC:              Mark-sweep garbage collector
+  Exception:       try-catch-finally support
+  Closure:         Lexical environment capture
+
+Call Frame:
+  IP:              Instruction pointer (uint8_t*)
+  Locals:          Local variable array
+  Closure:         Current closure context
+
+Execution Model:
+  Stack-based bytecode interpreter
+  Dynamic typing (tagged unions)
+  Call frames for function context
+  Exception handlers for error handling
+
+Performance:
+  Stack size:      10,000 values (80KB)
+  Frame depth:     256 (scalable)
+  Opcode dispatch: Direct execution
+
+================================================================================
+  📚 Standard Library (76함수)
+================================================================================
+
+Categories:
+  Type/Conversion:     8함수  (typeof, toNumber, toString, ...)
+  Math:                12함수 (add, sub, mul, div, pow, sqrt, ...)
+  String:              14함수 (strlen, strcat, substr, split, ...)
+  Array:               15함수 (push, pop, slice, join, sort, ...)
+  Object:              8함수  (keys, values, hasKey, delete, ...)
+  File I/O:            6함수  (readFile, writeFile, ...)
+  Cryptography:        7함수  (md5, sha256, base64, ...)
+  Utilities:           6함수  (print, assert, random, ...)
+
+================================================================================
+  🎯 v4-core TypeScript 마이그레이션 가능성
+================================================================================
+
+Highly Reusable (완전히 포팅 가능):
+  ✅ Token 정의 (62개) → Enum
+  ✅ AST 노드 정의 (47개) → Type unions
+  ✅ Value 타입 (9개) → Type aliases
+  ✅ Opcode 정의 (45개) → Enum
+  ✅ Parser 알고리즘 (973줄) → Recursive descent
+  ✅ Compiler 알고리즘 (1,312줄) → AST→Bytecode
+  ✅ VM 아키텍처 (1,245줄) → Stack-based interpreter
+  ✅ Closure 구현 (215줄) → Upvalue capture
+  ✅ Stdlib 함수 목록 (76개) → Native functions
+
+Partial Reuse:
+  ⚠️  GC 알고리즘 (913줄) → Reference counting도 가능
+  ⚠️  Type checker (945줄) → JavaScript 타입 추론으로 단순화
+  ⚠️  Lexer (499줄) → Regex 또는 상태머신
+
+Recommended Order:
+  1. Token definitions (1일)
+  2. AST node types (1일)
+  3. Value types (half day)
+  4. Lexer (TypeScript) (2-3일)
+  5. Parser (2-3일)
+  6. Type system (1-2일)
+  7. Compiler (2-3일)
+  8. VM (2-3일)
+  9. GC (1-2일)
+  10. Stdlib (1일)
+
+================================================================================
+  📈 생성된 문서
+================================================================================
+
+✓ ARCHITECTURE_ANALYSIS.md (11KB)
+  - 완전한 아키텍처 설명
+  - 각 모듈 상세 분석
+  - 코드 분포 분석
+  - 통계 및 특징
+
+✓ MODULE_INTERFACES.md (15KB)
+  - 각 모듈의 데이터 구조
+  - 함수 인터페이스
+  - 호출 순서
+  - 설계 원칙
+
+✓ ARCHITECTURE_DIAGRAM.svg
+  - 시각적 파이프라인 다이어그램
+  - 모듈 관계 표현
+  - 색상 구분 (메인/지원)
+
+================================================================================
+  ✅ 핵심 특징
+================================================================================
+
+Architecture:
+  ✅ Modular design with clear separation of concerns
+  ✅ Stack-based bytecode VM (similar to Lua, Python bytecode)
+  ✅ Dynamic typing with tagged unions
+  ✅ Proper memory management (GC + explicit free)
+
+Features:
+  ✅ Type checking (static analysis before execution)
+  ✅ Exception handling (try-catch-finally)
+  ✅ Closures and lexical scoping
+  ✅ Higher-order functions
+  ✅ Generic types
+  ✅ Async/await support (keywords defined)
+  ✅ Module system (import/export)
+
+Quality:
+  ✅ 0 external dependencies (libc only)
+  ✅ Comprehensive error reporting
+  ✅ Line number mapping for debugging
+  ✅ Object pool allocator for efficiency
+  ✅ ~330 functions well-organized
+
+================================================================================
+  🔍 파일 위치
+================================================================================
+
+Headers:      /home/kimjin/Desktop/kim/freelang-c/include/
+Sources:      /home/kimjin/Desktop/kim/freelang-c/src/
+Build:        gcc/clang (Makefile)
+Tests:        /home/kimjin/Desktop/kim/freelang-c/test/
+Examples:     /home/kimjin/Desktop/kim/freelang-c/examples/
+
+================================================================================
+  END OF ANALYSIS REPORT
+================================================================================

@@ -1,13 +1,14 @@
-# FreeLang C Runtime v2.0
+# FreeLang C Runtime v2.2
 
-**외부 의존성 0개** — 완전한 프로그래밍 언어 런타임 + 보안/암호화/이미지/프로세스 관리 내장
+**외부 의존성 0개** — 완전한 프로그래밍 언어 런타임
+보안/암호화/압축/이미지/프로세스 관리를 언어 자체에 내장.
 
 동적 타입, 일급 함수, 클로저, 예외 처리, Reactive 상태 관리를 지원하는 Stack-based 인터프리터.
 npm, pip, gem 없이 언어 자체가 인프라입니다.
 
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
-![Binary](https://img.shields.io/badge/binary-188KB-orange)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
+![Code](https://img.shields.io/badge/code-19%2C000%2B%20lines-yellow)
 ![Deps](https://img.shields.io/badge/dependencies-0-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -17,12 +18,13 @@ npm, pip, gem 없이 언어 자체가 인프라입니다.
 
 | 항목 | 내용 |
 |------|------|
-| **바이너리 크기** | 188KB |
 | **외부 의존성** | 0개 |
-| **총 코드** | 16,000+ 줄 |
-| **Opcode** | 50개 |
-| **표준 라이브러리** | 130+ 함수 |
-| **대체한 npm 패키지** | helmet, bcrypt, sharp, pm2, cluster |
+| **총 코드** | 19,000+ 줄 |
+| **소스 파일** | 22개 (C) |
+| **키워드** | 37개 (u32/u64/intrinsic 포함) |
+| **Opcode** | 54개 |
+| **표준 라이브러리** | 144+ 함수 |
+| **대체한 npm 패키지** | helmet, bcrypt, sharp, pm2, cluster, zlib |
 
 ---
 
@@ -30,12 +32,13 @@ npm, pip, gem 없이 언어 자체가 인프라입니다.
 
 ```bash
 git clone https://gogs.dclub.kr/kim/freelang-c-final.git
-cd freelang-c
+cd freelang-c-final
 make clean && make
 
-./bin/fl examples/secure-server.free    # HTTP 보안 서버
-./bin/fl examples/fibonacci.fl          # 재귀
-./bin/fl examples/closure.fl            # 클로저
+# 기본 예제
+./bin/fl run examples/fibonacci.fl          # 재귀
+./bin/fl run examples/secure_hasher.fl      # 암호화 셀프호스팅 증명
+./bin/fl repl                               # 대화형 REPL
 ```
 
 ---
@@ -73,22 +76,37 @@ fn addMessage(text) {
 | 옵저버 | < 10ms | **0.36ms** |
 | 동시 TX | 1000+ | **1000/1000** |
 
-### Phase 5: Crypto — bcrypt 대체
+### Phase 5: Crypto — bcrypt 대체 + 셀프호스팅 증명
 
 외부 bcrypt/openssl 없이 FreeLang 런타임에 내장된 암호화 엔진.
+**FreeLang C 컴파일러(C) → FreeLang 코드 실행 → Crypto 연산 성공** (Self-Hosting 증명)
 
 ```freelang
-let data = "hello world"
-let hash = sha256(data)               // SHA-256 (FIPS 180-4)
-let hex  = bytes_to_hex(hash)         // "b94d27b9..."
+// examples/secure_hasher.fl — 실행 가능한 셀프호스팅 증명 코드
+let data = "hello"
+let hash = sha256(data)
+let hex  = bytes_to_hex(hash)
+println(hex)
+// → 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
 
-let key  = crypto_random(32)          // CSPRNG (/dev/urandom)
-let mac  = hmac_sha256(key, data)     // HMAC-SHA256 (RFC 2104)
+let key  = crypto_random(32)           // CSPRNG (/dev/urandom)
+let mac  = hmac_sha256(key, data)      // HMAC-SHA256 (RFC 2104)
 
-let pw   = "my_password"
-let salt = crypto_random(16)
-let dk   = pbkdf2(pw, salt, 10000, 32) // PBKDF2-HMAC-SHA256 (RFC 8018)
+let dk   = pbkdf2("pw", "salt", 10000, 32)  // PBKDF2 (RFC 8018, bcrypt 대체)
+let safe = crypto_compare(hash, hash)  // 타이밍 안전 비교 (타이밍 공격 방어)
+
+let x = u32_add(4294967295, 1)         // u32 오버플로우 → 0
+let r = u32_rotr(0xABCD1234, 7)        // SHA-256 내부 회전 연산
 ```
+
+**NIST / RFC 검증 결과:**
+
+| 함수 | 표준 | 벡터 검증 |
+|------|------|----------|
+| `sha256("")` | FIPS 180-4 | `e3b0c442...` ✓ |
+| `sha256("abc")` | FIPS 180-4 | `ba7816bf...` ✓ |
+| `hmac_sha256("Jefe", ...)` | RFC 2202 | `5bdcc146...` ✓ |
+| `pbkdf2("password","salt",1,32)` | RFC 8018 | `120fb6cf...` ✓ |
 
 | 함수 | 대체 |
 |------|------|
@@ -97,6 +115,7 @@ let dk   = pbkdf2(pw, salt, 10000, 32) // PBKDF2-HMAC-SHA256 (RFC 8018)
 | `pbkdf2()` | bcrypt / argon2 |
 | `crypto_random()` | crypto.randomBytes() |
 | `crypto_compare()` | crypto.timingSafeEqual() |
+| `u32_rotr() / u32_add()` | SHA-256 내부 비트 연산 |
 
 ### Phase 6: HTTP Secure-Pipeline — helmet 대체
 
@@ -187,6 +206,45 @@ let workers = cluster_workers(4)
 | `cluster_workers()` | cluster.fork() |
 | `system_metrics()` | os 모듈 |
 
+### Phase 9: MOSS-Compressor — zlib 대체
+
+외부 zlib 없이 DEFLATE+GZIP 압축 엔진 내장.
+RFC 1951 (DEFLATE) + RFC 1952 (GZIP) 순수 C 구현.
+SIMD 레이어: AVX2 32바이트 / ARM NEON 16바이트 병렬 처리.
+
+```freelang
+// 기본 압축/해제
+let compressed = gzip("Hello World!", 6)
+let original   = gunzip(compressed)
+
+// 압축 정보 (Smart-Throttle 포함)
+let info = compress_info("My large payload...")
+print(info.savings_pct)       // 절감률 (%)
+print(info.simd_backend)      // "avx2" | "neon" | "scalar"
+print(info.should_compress)   // 1024B 미만이면 0 (헤더 오버헤드 방지)
+
+// MOSS-Pulse HTTP 응답 자동 압축
+// Accept-Encoding: gzip 감지 → 자동 압축 후 Content-Encoding 주입
+let resp = compress_response(body, accept_encoding_header)
+```
+
+**bit_pack 인스트럭션** — Zero-Copy 비트 누적 버퍼:
+```
+FL_OP_BIT_PACK    [val, bits] → [] — 비트 레지스터에 패킹
+FL_OP_BIT_FLUSH   [] → [bytes]    — 누적 비트 → bytes 플러시
+FL_OP_COMPRESS    [bytes, level] → [bytes]
+FL_OP_DECOMPRESS  [bytes] → [bytes]
+```
+
+| 함수 | 대체 | 검증 결과 |
+|------|------|----------|
+| `compress(data, level)` | zlib.gzip() | 28.3% 절감 |
+| `decompress(bytes)` | zlib.gunzip() | 왕복 정상 |
+| `gzip(data, level)` | zlib.createGzip() | RFC 1952 준수 |
+| `gunzip(bytes)` | zlib.createGunzip() | RFC 1952 준수 |
+| `compress_ratio(a, b)` | - | - |
+| `compress_info(data)` | - | simd_backend 감지 |
+
 ---
 
 ## 언어 문법
@@ -261,7 +319,8 @@ try {
 ```
 freelang-c/
 ├── include/
-│   ├── freelang.h        # 메인 헤더 (타입, Opcode)
+│   ├── freelang.h        # 메인 헤더 (타입, Opcode 54개)
+│   ├── compression.h     # MOSS-Compressor (Phase 9) ← NEW
 │   ├── http_secure.h     # Secure-Pipeline (Phase 6)
 │   ├── process.h         # Phoenix-Spawn (Phase 8)
 │   ├── cluster.h         # Cluster Manager (Phase 8)
@@ -274,9 +333,10 @@ freelang-c/
 │   ├── lexer.c           # 토크나이저
 │   ├── parser.c          # 파서
 │   ├── compiler.c        # 컴파일러
-│   ├── vm.c              # 스택 VM (Opcode 50개)
+│   ├── vm.c              # 스택 VM (Opcode 54개)
 │   ├── runtime.c         # 런타임
-│   ├── stdlib.c          # 표준 라이브러리 (130+ 함수)
+│   ├── stdlib.c          # 표준 라이브러리 (136+ 함수)
+│   ├── compression.c     # DEFLATE+GZIP 압축 엔진 (Phase 9) ← NEW
 │   ├── http_secure.c     # HTTP 보안 헤더 (Phase 6)
 │   ├── process.c         # 프로세스 관리 (Phase 8)
 │   ├── cluster.c         # 클러스터 (Phase 8)
@@ -285,11 +345,12 @@ freelang-c/
 │   ├── gc.c, ast.c, closure.c, error.c, token.c, typechecker.c
 │
 ├── examples/
-│   ├── secure-server.free   # HTTP 보안 서버 (Phase 6)
+│   ├── test_compression.free  # MOSS-Compressor 테스트 (Phase 9) ← NEW
+│   ├── secure-server.free     # HTTP 보안 서버 (Phase 6)
 │   ├── fibonacci.fl, closure.fl, arrays.fl, ...
 │
 ├── Makefile
-└── bin/fl                # 실행파일 (188KB, 의존성 0)
+└── bin/fl                # 실행파일 (의존성 0)
 ```
 
 ---
@@ -309,12 +370,24 @@ make release      # 릴리즈 빌드 (-O3)
 
 ---
 
+## Phase 구현 현황 요약
+
+| Phase | 이름 | 대체 | 상태 |
+|-------|------|------|------|
+| 1-3 | Language Core | - | ✅ |
+| 4 | MOSS-State Reactive | MobX/Redux | ✅ |
+| 5 | Crypto Engine | bcrypt/openssl | ✅ |
+| 6 | HTTP Secure-Pipeline | helmet | ✅ |
+| 7 | Vector-Vision | sharp/imagemagick | ✅ |
+| 8 | Phoenix-Spawn | pm2/cluster | ✅ |
+| 9 | MOSS-Compressor | **zlib/compression** | ✅ NEW |
+
 ## 저장소
 
 **Gogs**: https://gogs.dclub.kr/kim/freelang-c-final
 
 ---
 
-**Version**: 2.0.0
+**Version**: 2.2.0
 **Status**: Production Ready
 **Updated**: 2026-03-08

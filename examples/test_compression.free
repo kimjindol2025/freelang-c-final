@@ -1,0 +1,44 @@
+// FreeLang MOSS-Compressor 테스트
+// compress/decompress/compress_info 검증
+
+fn main() {
+  print("=== MOSS-Compressor v1.0 테스트 ===");
+
+  // 1. 기본 압축 테스트
+  let text = "Hello FreeLang! DEFLATE compression engine. ABCDEF ABCDEF ABCDEF ABCDEF ABCDEF ABCDEF ABCDEF ABCDEF";
+  let info = compress_info(text);
+  print("원본 크기:    ");
+  print(info.original);
+  print("압축 크기:    ");
+  print(info.compressed);
+  print("압축률:       ");
+  print(info.savings_pct);
+  print("SIMD 백엔드:  ");
+  print(info.simd_backend);
+
+  // 2. gzip/gunzip 왕복 테스트
+  let payload = "FreeLang셀프호스팅증명MOSS압축엔진반복반복반복반복반복반복반복반복반복반복";
+  let gz = gzip(payload, 6);
+  print("gzip 결과 크기: ");
+  print(bytes_len(gz));
+  print(" bytes");
+
+  let restored = gunzip(gz);
+  print("gunzip OK: bytes=");
+  print(bytes_len(restored));
+
+  // 3. compress_info의 should_compress 확인
+  let short_text = "short";
+  let short_info = compress_info(short_text);
+  print("단문 should_compress: ");
+  print(short_info.should_compress);
+
+  // 4. 압축률 계산
+  let ratio = compress_ratio(info.original, info.compressed);
+  print("압축비 (원본/압축): ");
+  print(ratio);
+
+  print("=== 테스트 완료 ===");
+}
+
+main();

@@ -706,6 +706,40 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
         for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
         fl_vm_push(vm, fl_compress_info(args, (size_t)argc));
         free(args);
+    /* Phase 8: MOSS-Autodoc - Self-Documenting API Engine */
+    } else if (strcmp(name, "autodoc_init") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_autodoc_init_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "autodoc_register") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_autodoc_register_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "autodoc_add_param") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_autodoc_add_param_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "autodoc_json") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_autodoc_json_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "autodoc_html") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_autodoc_html_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "autodoc_routes_json") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_autodoc_routes_json_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "autodoc_count") == 0) {
+        fl_value_t null_args; null_args.type = FL_TYPE_NULL;
+        fl_vm_push(vm, fl_autodoc_count_builtin(&null_args, 0));
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;
