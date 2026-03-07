@@ -1,16 +1,17 @@
-# FreeLang C Runtime v2.2
+# FreeLang C Runtime v2.5
 
 **외부 의존성 0개** — 완전한 프로그래밍 언어 런타임
-보안/암호화/압축/이미지/프로세스 관리를 언어 자체에 내장.
+보안/암호화/압축/이미지/프로세스/메일/API문서 관리를 언어 자체에 내장.
 
 동적 타입, 일급 함수, 클로저, 예외 처리, Reactive 상태 관리를 지원하는 Stack-based 인터프리터.
-npm, pip, gem 없이 언어 자체가 인프라입니다.
+npm, pip, gem 없이 **언어 자체가 인프라**입니다.
 
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Version](https://img.shields.io/badge/version-2.3.0-blue)
-![Code](https://img.shields.io/badge/code-18%2C700%2B%20lines-yellow)
+![Version](https://img.shields.io/badge/version-2.5.0-blue)
+![Code](https://img.shields.io/badge/code-22%2C000%2B%20lines-yellow)
 ![Deps](https://img.shields.io/badge/dependencies-0-success)
 ![SIMD](https://img.shields.io/badge/SIMD-SSE2%2FAVX2%2FNEON-orange)
+![Phases](https://img.shields.io/badge/phases-12-purple)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
@@ -20,13 +21,14 @@ npm, pip, gem 없이 언어 자체가 인프라입니다.
 | 항목 | 내용 |
 |------|------|
 | **외부 의존성** | 0개 |
-| **총 코드** | 18,700+ 줄 |
-| **소스 파일** | 20개 C + 20개 헤더 |
-| **키워드** | 40개 (u8/aligned/vectorize 신규) |
+| **총 코드** | 22,000+ 줄 |
+| **소스 파일** | 22개 C + 22개 헤더 |
+| **키워드** | 42개 |
 | **Opcode** | 54개 |
-| **표준 라이브러리** | 150+ 함수 |
-| **대체한 npm 패키지** | helmet, bcrypt, sharp, pm2, cluster, zlib |
+| **표준 라이브러리** | 170+ 함수 |
+| **대체한 npm 패키지** | helmet, bcrypt, sharp, pm2, cluster, zlib, winston, swagger-ui, nodemailer |
 | **SIMD 지원** | SSE2 / AVX2 / ARM NEON (자동 감지) |
+| **어노테이션** | @api, @watch, @transaction, @cluster, @autorestart, @vectorize, @log_level |
 
 ---
 
