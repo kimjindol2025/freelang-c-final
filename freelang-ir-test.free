@@ -1,0 +1,85 @@
+/*
+ * Phase 2.3 IR Generator - Direct AST Test
+ * Parse를 거치지 않고 직접 AST를 생성해서 IR 테스트
+ */
+
+let ir_instructions = []
+let ir_const_pool = []
+
+fn ir_const(value) {
+  let i = 0
+  while (i < len(ir_const_pool)) {
+    if (ir_const_pool[i] == value) {
+      return i
+    }
+    i = i + 1
+  }
+  push(ir_const_pool, value)
+  return len(ir_const_pool) - 1
+}
+
+fn ir_emit(opcode, operand1, operand2) {
+  push(ir_instructions, [opcode, operand1, operand2])
+}
+
+fn gen_program(functions, statements) {
+  let i = 0
+  while (i < len(functions)) {
+    ir_emit("FUNC_DEF", ir_const(functions[i][1]), 0)
+    i = i + 1
+  }
+
+  ir_emit("PROG_START", 0, 0)
+
+  i = 0
+  while (i < len(statements)) {
+    ir_emit("STMT", ir_const("expr"), 0)
+    i = i + 1
+  }
+  ir_emit("PROG_END", 0, 0)
+}
+
+fn print_ir() {
+  println("=======================================")
+  println("IR Code (Intermediate Representation)")
+  println("=======================================")
+
+  let i = 0
+  while (i < len(ir_instructions)) {
+    let instr = ir_instructions[i]
+    let opcode = instr[0]
+    println(opcode)
+    i = i + 1
+  }
+
+  println("=======================================")
+  println("Constants:")
+  println("=======================================")
+  i = 0
+  while (i < len(ir_const_pool)) {
+    println(ir_const_pool[i])
+    i = i + 1
+  }
+}
+
+fn main() {
+  println("FreeLang IR Generator Test")
+  println("===========================")
+
+  let functions = [
+    ["Function", "main", [], []]
+  ]
+
+  let statements = [
+    ["ExprStmt", ["Call", "main", []]]
+  ]
+
+  gen_program(functions, statements)
+  println("✓ IR Generated")
+
+  print_ir()
+
+  println("✅ Test Complete")
+}
+
+main()

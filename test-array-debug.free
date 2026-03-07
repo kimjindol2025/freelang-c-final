@@ -1,0 +1,10 @@
+let arr = []
+fn main() {
+  println("Before push")
+  push(arr, 42)
+  println("After push 42")
+  println(len(arr))
+  let val = arr[0]
+  println(val)
+}
+main()

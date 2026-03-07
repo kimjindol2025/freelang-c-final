@@ -83,6 +83,30 @@ static fl_value_t fl_new_object(void) {
     return result;
 }
 
+/* Bytes helper functions */
+static fl_bytes_t* fl_bytes_create(size_t capacity) {
+    fl_bytes_t* b = malloc(sizeof(fl_bytes_t));
+    b->capacity = capacity > 0 ? capacity : 256;
+    b->size = 0;
+    b->data = malloc(b->capacity);
+    return b;
+}
+
+static fl_value_t fl_new_bytes(size_t capacity) {
+    fl_value_t result;
+    result.type = FL_TYPE_BYTES;
+    result.data.bytes_val = fl_bytes_create(capacity);
+    return result;
+}
+
+static void fl_bytes_expand(fl_bytes_t* b, size_t needed_size) {
+    if (needed_size <= b->capacity) return;
+    size_t new_capacity = b->capacity * 2;
+    while (new_capacity < needed_size) new_capacity *= 2;
+    b->data = realloc(b->data, new_capacity);
+    b->capacity = new_capacity;
+}
+
 /* I/O Functions */
 
 fl_value_t fl_print(fl_value_t* args, size_t argc) {
@@ -1707,6 +1731,11 @@ void fl_value_print(fl_value_t value) {
         case FL_TYPE_CLOSURE:
             printf("[closure]");
             break;
+        case FL_TYPE_BYTES: {
+            fl_bytes_t* b = value.data.bytes_val;
+            printf("[bytes:%zu]", b ? b->size : 0);
+            break;
+        }
         case FL_TYPE_ERROR:
             printf("[error]");
             break;
@@ -1724,6 +1753,7 @@ const char* fl_type_name(fl_type_t type) {
         case FL_TYPE_OBJECT:    return "object";
         case FL_TYPE_FUNCTION:  return "function";
         case FL_TYPE_CLOSURE:   return "closure";
+        case FL_TYPE_BYTES:     return "bytes";
         case FL_TYPE_ERROR:     return "error";
         default:                return "unknown";
     }
@@ -1734,4 +1764,325 @@ void fl_value_free(fl_value_t value) {
         free(value.data.string_val);
     }
     /* Other types handled by GC */
+}
+
+/* File I/O Functions */
+
+/**
+ * write_bytes_file(filename: string, bytes: array[int]) -> null
+ * Writes binary data to a file. Each element in the array should be 0-255.
+ * Used for creating binary files like ELF executables.
+ */
+fl_value_t fl_write_bytes_file(fl_value_t* args, size_t argc) {
+    if (argc < 2) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: Expected 2 arguments (filename, bytes array)\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_STRING) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: First argument must be a string (filename)\n");
+        return fl_new_null();
+    }
+
+    if (args[1].type != FL_TYPE_ARRAY) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: Second argument must be an array of bytes\n");
+        return fl_new_null();
+    }
+
+    const char* filename = args[0].data.string_val;
+    fl_array_t* byte_array = args[1].data.array_val;
+
+    FILE* f = fopen(filename, "wb");
+    if (!f) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: Failed to open file '%s' for writing\n", filename);
+        return fl_new_null();
+    }
+
+    for (size_t i = 0; i < byte_array->size; i++) {
+        if (byte_array->elements[i].type != FL_TYPE_INT) {
+            fprintf(stderr, "[STDLIB] write_bytes_file: Array element %zu is not an integer\n", i);
+            fclose(f);
+            return fl_new_null();
+        }
+        uint8_t byte = (uint8_t)(byte_array->elements[i].data.int_val & 0xFF);
+        if (fwrite(&byte, 1, 1, f) != 1) {
+            fprintf(stderr, "[STDLIB] write_bytes_file: Write error at byte %zu\n", i);
+            fclose(f);
+            return fl_new_null();
+        }
+    }
+
+    fclose(f);
+    printf("[STDLIB] write_bytes_file: Wrote %zu bytes to '%s'\n", byte_array->size, filename);
+    return fl_new_null();
+}
+
+/**
+ * read_file(filename: string) -> string
+ * Reads a text file and returns its contents as a string.
+ */
+fl_value_t fl_read_file(fl_value_t* args, size_t argc) {
+    if (argc < 1) {
+        fprintf(stderr, "[STDLIB] read_file: Expected 1 argument (filename)\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_STRING) {
+        fprintf(stderr, "[STDLIB] read_file: Argument must be a string (filename)\n");
+        return fl_new_null();
+    }
+
+    const char* filename = args[0].data.string_val;
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "[STDLIB] read_file: Failed to open file '%s'\n", filename);
+        return fl_new_null();
+    }
+
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (file_size < 0) {
+        fprintf(stderr, "[STDLIB] read_file: Failed to get file size\n");
+        fclose(f);
+        return fl_new_null();
+    }
+
+    char* buffer = malloc(file_size + 1);
+    if (!buffer) {
+        fprintf(stderr, "[STDLIB] read_file: Memory allocation failed\n");
+        fclose(f);
+        return fl_new_null();
+    }
+
+    size_t bytes_read = fread(buffer, 1, file_size, f);
+    fclose(f);
+
+    if (bytes_read != (size_t)file_size) {
+        fprintf(stderr, "[STDLIB] read_file: Read %zu bytes, expected %ld\n", bytes_read, file_size);
+        free(buffer);
+        return fl_new_null();
+    }
+
+    buffer[file_size] = '\0';
+    fl_value_t result = fl_new_string(buffer);
+    free(buffer);
+    return result;
+}
+
+/* len(array) -> int */
+fl_value_t fl_len(fl_value_t* args, size_t argc) {
+    if (argc < 1) {
+        fprintf(stderr, "[STDLIB] len: Expected 1 argument\n");
+        return fl_new_int(0);
+    }
+
+    if (args[0].type == FL_TYPE_ARRAY) {
+        fl_array_t* arr = args[0].data.array_val;
+        if (arr) {
+            return fl_new_int(arr->size);
+        }
+        return fl_new_int(0);
+    }
+
+    if (args[0].type == FL_TYPE_STRING) {
+        const char* str = args[0].data.string_val;
+        if (str) {
+            return fl_new_int(strlen(str));
+        }
+        return fl_new_int(0);
+    }
+
+    fprintf(stderr, "[STDLIB] len: Argument must be array or string\n");
+    return fl_new_int(0);
+}
+
+/* push(array, value) */
+fl_value_t fl_push(fl_value_t* args, size_t argc) {
+    if (argc < 2) {
+        fprintf(stderr, "[STDLIB] push: Expected 2 arguments\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_ARRAY) {
+        fprintf(stderr, "[STDLIB] push: First argument must be an array\n");
+        return fl_new_null();
+    }
+
+    fl_array_t* arr = args[0].data.array_val;
+    if (!arr) {
+        fprintf(stderr, "[STDLIB] push: Array is NULL\n");
+        return fl_new_null();
+    }
+
+    /* Resize if needed */
+    if (arr->size >= arr->capacity) {
+        arr->capacity = (arr->capacity == 0) ? 10 : arr->capacity * 2;
+        fl_value_t* new_elements = realloc(arr->elements, arr->capacity * sizeof(fl_value_t));
+        if (!new_elements) {
+            fprintf(stderr, "[STDLIB] push: Memory allocation failed\n");
+            return fl_new_null();
+        }
+        arr->elements = new_elements;
+    }
+
+    arr->elements[arr->size] = args[1];
+    arr->size++;
+
+    return fl_new_null();
+}
+
+/* ============================================================
+   Bytes Builtin Functions (Phase 3)
+   ============================================================ */
+
+/* bytes_new(size) -> bytes */
+fl_value_t fl_bytes_new(fl_value_t* args, size_t argc) {
+    size_t size = 256;
+
+    if (argc > 0 && args[0].type == FL_TYPE_INT) {
+        size = (size_t)args[0].data.int_val;
+    }
+
+    return fl_new_bytes(size);
+}
+
+/* bytes_len(bytes) -> int */
+fl_value_t fl_bytes_len(fl_value_t* args, size_t argc) {
+    if (argc < 1) {
+        fprintf(stderr, "[STDLIB] bytes_len: Expected 1 argument\n");
+        return fl_new_int(0);
+    }
+
+    if (args[0].type != FL_TYPE_BYTES) {
+        fprintf(stderr, "[STDLIB] bytes_len: Argument must be bytes\n");
+        return fl_new_int(0);
+    }
+
+    fl_bytes_t* b = args[0].data.bytes_val;
+    if (!b) return fl_new_int(0);
+
+    return fl_new_int((fl_int)b->size);
+}
+
+/* bytes_set(bytes, idx, value) - set byte at index */
+fl_value_t fl_bytes_set(fl_value_t* args, size_t argc) {
+    if (argc < 3) {
+        fprintf(stderr, "[STDLIB] bytes_set: Expected 3 arguments\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_BYTES || args[1].type != FL_TYPE_INT || args[2].type != FL_TYPE_INT) {
+        fprintf(stderr, "[STDLIB] bytes_set: Wrong argument types\n");
+        return fl_new_null();
+    }
+
+    fl_bytes_t* b = args[0].data.bytes_val;
+    size_t idx = (size_t)args[1].data.int_val;
+    uint8_t val = (uint8_t)(args[2].data.int_val & 0xFF);
+
+    if (!b) return fl_new_null();
+
+    if (idx >= b->capacity) {
+        fl_bytes_expand(b, idx + 1);
+    }
+
+    b->data[idx] = val;
+    if (idx >= b->size) {
+        b->size = idx + 1;
+    }
+
+    return fl_new_null();
+}
+
+/* bytes_get(bytes, idx) -> int */
+fl_value_t fl_bytes_get(fl_value_t* args, size_t argc) {
+    if (argc < 2) {
+        fprintf(stderr, "[STDLIB] bytes_get: Expected 2 arguments\n");
+        return fl_new_int(0);
+    }
+
+    if (args[0].type != FL_TYPE_BYTES || args[1].type != FL_TYPE_INT) {
+        fprintf(stderr, "[STDLIB] bytes_get: Wrong argument types\n");
+        return fl_new_int(0);
+    }
+
+    fl_bytes_t* b = args[0].data.bytes_val;
+    size_t idx = (size_t)args[1].data.int_val;
+
+    if (!b || idx >= b->size) {
+        return fl_new_int(0);
+    }
+
+    return fl_new_int((fl_int)b->data[idx]);
+}
+
+/* bytes_write_u32(bytes, offset, value) - write 32-bit value (little-endian) */
+fl_value_t fl_bytes_write_u32(fl_value_t* args, size_t argc) {
+    if (argc < 3) {
+        fprintf(stderr, "[STDLIB] bytes_write_u32: Expected 3 arguments\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_BYTES || args[1].type != FL_TYPE_INT || args[2].type != FL_TYPE_INT) {
+        fprintf(stderr, "[STDLIB] bytes_write_u32: Wrong argument types\n");
+        return fl_new_null();
+    }
+
+    fl_bytes_t* b = args[0].data.bytes_val;
+    size_t offset = (size_t)args[1].data.int_val;
+    uint32_t val = (uint32_t)args[2].data.int_val;
+
+    if (!b) return fl_new_null();
+
+    if (offset + 4 > b->capacity) {
+        fl_bytes_expand(b, offset + 4);
+    }
+
+    /* Write little-endian */
+    b->data[offset + 0] = (uint8_t)(val & 0xFF);
+    b->data[offset + 1] = (uint8_t)((val >> 8) & 0xFF);
+    b->data[offset + 2] = (uint8_t)((val >> 16) & 0xFF);
+    b->data[offset + 3] = (uint8_t)((val >> 24) & 0xFF);
+
+    if (offset + 4 > b->size) {
+        b->size = offset + 4;
+    }
+
+    return fl_new_null();
+}
+
+/* bytes_write_u64(bytes, offset, value) - write 64-bit value (little-endian) */
+fl_value_t fl_bytes_write_u64(fl_value_t* args, size_t argc) {
+    if (argc < 3) {
+        fprintf(stderr, "[STDLIB] bytes_write_u64: Expected 3 arguments\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_BYTES || args[1].type != FL_TYPE_INT || args[2].type != FL_TYPE_INT) {
+        fprintf(stderr, "[STDLIB] bytes_write_u64: Wrong argument types\n");
+        return fl_new_null();
+    }
+
+    fl_bytes_t* b = args[0].data.bytes_val;
+    size_t offset = (size_t)args[1].data.int_val;
+    uint64_t val = (uint64_t)args[2].data.int_val;
+
+    if (!b) return fl_new_null();
+
+    if (offset + 8 > b->capacity) {
+        fl_bytes_expand(b, offset + 8);
+    }
+
+    /* Write little-endian */
+    for (int i = 0; i < 8; i++) {
+        b->data[offset + i] = (uint8_t)((val >> (i * 8)) & 0xFF);
+    }
+
+    if (offset + 8 > b->size) {
+        b->size = offset + 8;
+    }
+
+    return fl_new_null();
 }

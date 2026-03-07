@@ -1,0 +1,19 @@
+fn main() {
+  let arr = []
+  push(arr, ["a", 1, 2])
+  push(arr, ["b", 3, 4])
+  
+  println("Array length:")
+  println(len(arr))
+  
+  let first = arr[0]
+  println("First element:")
+  println(first)
+  
+  println("First[0]:")
+  println(first[0])
+  
+  println("First[1]:")
+  println(first[1])
+}
+main()

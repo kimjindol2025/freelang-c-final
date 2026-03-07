@@ -1,0 +1,327 @@
+/*
+ * FreeLang Self-Hosting Compiler
+ * 완성형: hello.free → hello.elf 컴파일
+ *
+ * 아키텍처:
+ * 1. Lexer: 소스 → 토큰 배열
+ * 2. Parser: 토큰 → AST
+ * 3. IR Generator: AST → 중간 표현
+ * 4. Code Generator: IR → aarch64 기계어
+ * 5. ELF Generator: 기계어 → ELF 바이너리
+ */
+
+/* ============================================================
+   Part 1: Lexer (Tokenizer)
+   ============================================================ */
+
+fn is_whitespace(ch) {
+  if (ch == " ") { return true }
+  if (ch == "\t") { return true }
+  if (ch == "\n") { return true }
+  if (ch == "\r") { return true }
+  return false
+}
+
+fn is_digit(ch) {
+  if (ch >= "0" && ch <= "9") { return true }
+  return false
+}
+
+fn is_alpha(ch) {
+  if (ch >= "a" && ch <= "z") { return true }
+  if (ch >= "A" && ch <= "Z") { return true }
+  if (ch == "_") { return true }
+  return false
+}
+
+fn is_alnum(ch) {
+  if (is_alpha(ch)) { return true }
+  if (is_digit(ch)) { return true }
+  return false
+}
+
+/* Token 타입 정의 */
+fn token_type_string(type) {
+  if (type == 0) { return "EOF" }
+  if (type == 1) { return "IDENTIFIER" }
+  if (type == 2) { return "NUMBER" }
+  if (type == 3) { return "STRING" }
+  if (type == 4) { return "KEYWORD" }
+  if (type == 5) { return "LPAREN" }
+  if (type == 6) { return "RPAREN" }
+  if (type == 7) { return "LBRACE" }
+  if (type == 8) { return "RBRACE" }
+  if (type == 9) { return "LBRACKET" }
+  if (type == 10) { return "RBRACKET" }
+  if (type == 11) { return "COMMA" }
+  if (type == 12) { return "COLON" }
+  if (type == 13) { return "SEMICOLON" }
+  if (type == 14) { return "ASSIGN" }
+  if (type == 15) { return "PLUS" }
+  if (type == 16) { return "MINUS" }
+  if (type == 17) { return "STAR" }
+  if (type == 18) { return "SLASH" }
+  if (type == 19) { return "EQ" }
+  if (type == 20) { return "NE" }
+  if (type == 21) { return "LT" }
+  if (type == 22) { return "LE" }
+  if (type == 23) { return "GT" }
+  if (type == 24) { return "GE" }
+  return "UNKNOWN"
+}
+
+/* 키워드 확인 */
+fn is_keyword(word) {
+  if (word == "fn") { return true }
+  if (word == "let") { return true }
+  if (word == "if") { return true }
+  if (word == "else") { return true }
+  if (word == "while") { return true }
+  if (word == "for") { return true }
+  if (word == "return") { return true }
+  if (word == "true") { return true }
+  if (word == "false") { return true }
+  if (word == "null") { return true }
+  return false
+}
+
+/* 렉서 - 소스를 토큰으로 변환 */
+fn tokenize(source) {
+  let tokens = []
+  let i = 0
+  let len = len(source)
+
+  while (i < len) {
+    let ch = source[i]
+
+    /* 공백 스킵 */
+    if (is_whitespace(ch)) {
+      i = i + 1
+      continue
+    }
+
+    /* 주석 처리 */
+    if (ch == "/" && i + 1 < len && source[i + 1] == "*") {
+      /* /* ... */ 주석 찾기 */
+      i = i + 2
+      while (i + 1 < len) {
+        if (source[i] == "*" && source[i + 1] == "/") {
+          i = i + 2
+          break
+        }
+        i = i + 1
+      }
+      continue
+    }
+
+    if (ch == "/" && i + 1 < len && source[i + 1] == "/") {
+      /* // 주석 처리 */
+      while (i < len && source[i] != "\n") {
+        i = i + 1
+      }
+      continue
+    }
+
+    /* 문자열 */
+    if (ch == "\"") {
+      i = i + 1
+      let str = ""
+      while (i < len && source[i] != "\"") {
+        if (source[i] == "\\") {
+          i = i + 1
+          if (i < len) {
+            if (source[i] == "n") {
+              str = str + "\n"
+            } else if (source[i] == "t") {
+              str = str + "\t"
+            } else if (source[i] == "r") {
+              str = str + "\r"
+            } else {
+              str = str + source[i]
+            }
+          }
+        } else {
+          str = str + source[i]
+        }
+        i = i + 1
+      }
+      if (i < len) {
+        i = i + 1  /* 닫는 " */
+      }
+      push(tokens, [3, str])  /* STRING 토큰 */
+      continue
+    }
+
+    /* 숫자 */
+    if (is_digit(ch)) {
+      let num = ""
+      while (i < len && is_digit(source[i])) {
+        num = num + source[i]
+        i = i + 1
+      }
+      push(tokens, [2, num])  /* NUMBER 토큰 */
+      continue
+    }
+
+    /* 식별자 또는 키워드 */
+    if (is_alpha(ch)) {
+      let word = ""
+      while (i < len && is_alnum(source[i])) {
+        word = word + source[i]
+        i = i + 1
+      }
+      if (is_keyword(word)) {
+        push(tokens, [4, word])  /* KEYWORD 토큰 */
+      } else {
+        push(tokens, [1, word])  /* IDENTIFIER 토큰 */
+      }
+      continue
+    }
+
+    /* 기호 */
+    if (ch == "(") {
+      push(tokens, [5, "("])
+      i = i + 1
+      continue
+    }
+    if (ch == ")") {
+      push(tokens, [6, ")"])
+      i = i + 1
+      continue
+    }
+    if (ch == "{") {
+      push(tokens, [7, "{"])
+      i = i + 1
+      continue
+    }
+    if (ch == "}") {
+      push(tokens, [8, "}"])
+      i = i + 1
+      continue
+    }
+    if (ch == "[") {
+      push(tokens, [9, "["])
+      i = i + 1
+      continue
+    }
+    if (ch == "]") {
+      push(tokens, [10, "]"])
+      i = i + 1
+      continue
+    }
+    if (ch == ",") {
+      push(tokens, [11, ","])
+      i = i + 1
+      continue
+    }
+    if (ch == ":") {
+      push(tokens, [12, ":"])
+      i = i + 1
+      continue
+    }
+    if (ch == ";") {
+      push(tokens, [13, ";"])
+      i = i + 1
+      continue
+    }
+    if (ch == "=" && i + 1 < len && source[i + 1] == "=") {
+      push(tokens, [19, "=="])
+      i = i + 2
+      continue
+    }
+    if (ch == "=") {
+      push(tokens, [14, "="])
+      i = i + 1
+      continue
+    }
+    if (ch == "!") {
+      if (i + 1 < len && source[i + 1] == "=") {
+        push(tokens, [20, "!="])
+        i = i + 2
+      } else {
+        i = i + 1
+      }
+      continue
+    }
+    if (ch == "<" && i + 1 < len && source[i + 1] == "=") {
+      push(tokens, [22, "<="])
+      i = i + 2
+      continue
+    }
+    if (ch == "<") {
+      push(tokens, [21, "<"])
+      i = i + 1
+      continue
+    }
+    if (ch == ">" && i + 1 < len && source[i + 1] == "=") {
+      push(tokens, [24, ">="])
+      i = i + 2
+      continue
+    }
+    if (ch == ">") {
+      push(tokens, [23, ">"])
+      i = i + 1
+      continue
+    }
+    if (ch == "+") {
+      push(tokens, [15, "+"])
+      i = i + 1
+      continue
+    }
+    if (ch == "-") {
+      push(tokens, [16, "-"])
+      i = i + 1
+      continue
+    }
+    if (ch == "*") {
+      push(tokens, [17, "*"])
+      i = i + 1
+      continue
+    }
+    if (ch == "/") {
+      push(tokens, [18, "/"])
+      i = i + 1
+      continue
+    }
+
+    /* 알 수 없는 문자 스킵 */
+    i = i + 1
+  }
+
+  push(tokens, [0, ""])  /* EOF */
+  return tokens
+}
+
+/* ============================================================
+   Main: 렉서 테스트
+   ============================================================ */
+
+fn main() {
+  println("=======================================")
+  println("FreeLang Lexer - Phase 2.1")
+  println("=======================================")
+
+  let source = read_file("hello.free")
+  println("Source code loaded")
+
+  let tokens = tokenize(source)
+  println("Tokenization complete")
+
+  let i = 0
+  let count = 0
+  while (i < len(tokens) && count < 20) {
+    let token = tokens[i]
+    let type_id = token[0]
+    let value = token[1]
+    println(token_type_string(type_id))
+    i = i + 1
+    count = count + 1
+  }
+
+  println("=======================================")
+  println("Total tokens: ")
+  println(len(tokens))
+  println("=======================================")
+}
+
+main()

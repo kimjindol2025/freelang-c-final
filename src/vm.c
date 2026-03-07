@@ -11,6 +11,7 @@
 #include "../include/compiler.h"
 #include "../include/runtime.h"
 #include "../include/closure.h"
+#include "../include/stdlib_fl.h"
 
 /* ============================================================
    VM Global State
@@ -300,6 +301,96 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
     } else if (strcmp(name, "print") == 0) {
         fl_value_t ret = builtin_print(vm, argc);
         fl_vm_push(vm, ret);
+    } else if (strcmp(name, "write_bytes_file") == 0) {
+        /* write_bytes_file(filename, byte_array) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_write_bytes_file(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "read_file") == 0) {
+        /* read_file(filename) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_read_file(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "len") == 0) {
+        /* len(array/string) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_len(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "push") == 0) {
+        /* push(array, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_push(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_new") == 0) {
+        /* bytes_new(capacity) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_new(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_len") == 0) {
+        /* bytes_len(bytes) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_len(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_set") == 0) {
+        /* bytes_set(bytes, idx, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_set(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_get") == 0) {
+        /* bytes_get(bytes, idx) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_get(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_write_u32") == 0) {
+        /* bytes_write_u32(bytes, offset, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_write_u32(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_write_u64") == 0) {
+        /* bytes_write_u64(bytes, offset, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_write_u64(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;
@@ -970,18 +1061,27 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
             case FL_OP_ARRAY_GET: {
                 fl_value_t idx = fl_vm_pop(vm);
                 fl_value_t arr_val = fl_vm_pop(vm);
+                fl_value_t result;
+                result.type = FL_TYPE_NULL;
 
                 if (arr_val.type == FL_TYPE_ARRAY && idx.type == FL_TYPE_INT) {
                     fl_array_t *arr = arr_val.data.array_val;
                     size_t i = (size_t)idx.data.int_val;
                     if (i < arr->size) {
-                        fl_vm_push(vm, arr->elements[i]);
-                    } else {
-                        fl_value_t null_val;
-                        null_val.type = FL_TYPE_NULL;
-                        fl_vm_push(vm, null_val);
+                        result = arr->elements[i];
+                    }
+                } else if (arr_val.type == FL_TYPE_STRING && idx.type == FL_TYPE_INT) {
+                    /* String indexing: return single character as string */
+                    const char *str = arr_val.data.string_val;
+                    size_t i = (size_t)idx.data.int_val;
+                    if (i < strlen(str)) {
+                        char ch[2] = {str[i], '\0'};
+                        result.type = FL_TYPE_STRING;
+                        result.data.string_val = (char*)malloc(2);
+                        strcpy(result.data.string_val, ch);
                     }
                 }
+                fl_vm_push(vm, result);
                 break;
             }
 
@@ -1124,7 +1224,7 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
             case FL_OP_CATCH_END: {
                 /* Catch block ended - clear exception state */
                 vm->exception_active = false;
-                vm->exception_handler = NULL;
+                vm->exception_handler = 0;
                 break;
             }
 

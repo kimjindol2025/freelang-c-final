@@ -1,0 +1,31 @@
+fn main() {
+  println("=== bytes Type Test ===")
+  
+  let b = bytes_new(512)
+  println("✓ Created bytes(512)")
+  
+  bytes_set(b, 0, 0x7f)
+  bytes_set(b, 1, 0x45)
+  bytes_set(b, 2, 0x4c)
+  bytes_set(b, 3, 0x46)
+  println("✓ Set bytes [0x7f, 0x45, 0x4c, 0x46]")
+  
+  println("Reading back:")
+  println(bytes_get(b, 0))
+  println(bytes_get(b, 1))
+  println(bytes_get(b, 2))
+  println(bytes_get(b, 3))
+  
+  bytes_write_u32(b, 100, 0x12345678)
+  println("✓ Wrote u32 at offset 100")
+  
+  bytes_write_u64(b, 200, 0x123456789abcdef0)
+  println("✓ Wrote u64 at offset 200")
+  
+  let len = bytes_len(b)
+  println("Final size:")
+  println(len)
+  
+  println("✅ bytes type fully functional!")
+}
+main()

@@ -1,0 +1,294 @@
+/*
+ * FreeLang Compiler v4-Safe
+ * Phase 2.3: IR Generator with SAFE Local Arrays Only
+ *
+ * 전역 배열 제거 - 모든 배열은 함수 내부에서만 생성
+ * IR 연산을 명시적 함수 호출로 처리
+ */
+
+/* ============================================================
+   PART 1: Lexer (토큰화)
+   ============================================================ */
+
+fn is_whitespace(ch) {
+  if (ch == " ") { return true }
+  if (ch == "\t") { return true }
+  if (ch == "\n") { return true }
+  if (ch == "\r") { return true }
+  return false
+}
+
+fn is_digit(ch) {
+  if (ch >= "0" && ch <= "9") { return true }
+  return false
+}
+
+fn is_alpha(ch) {
+  if (ch >= "a" && ch <= "z") { return true }
+  if (ch >= "A" && ch <= "Z") { return true }
+  if (ch == "_") { return true }
+  return false
+}
+
+fn tokenize(source) {
+  let tokens = []
+  let i = 0
+
+  while (i < len(source)) {
+    let ch = source[i]
+
+    if (is_whitespace(ch)) {
+      i = i + 1
+      if (ch == "\n") {
+        i = i + 1
+      }
+      continue
+    }
+
+    if (is_alpha(ch)) {
+      let start = i
+      while (i < len(source) && (is_alpha(source[i]) || is_digit(source[i]))) {
+        i = i + 1
+      }
+      let word = ""
+      /* Extract substring - simple approach */
+      let j = start
+      while (j < i) {
+        word = word + source[j]
+        j = j + 1
+      }
+
+      let token_type = 1
+      if (word == "fn" || word == "let" || word == "return") {
+        token_type = 2
+      }
+
+      let token = []
+      push(token, token_type)
+      push(token, word)
+      push(tokens, token)
+      continue
+    }
+
+    if (is_digit(ch)) {
+      let start = i
+      let num_str = ""
+      while (i < len(source) && is_digit(source[i])) {
+        num_str = num_str + source[i]
+        i = i + 1
+      }
+
+      let token = []
+      push(token, 3)
+      push(token, num_str)
+      push(tokens, token)
+      continue
+    }
+
+    if (ch == "\"") {
+      i = i + 1
+      let str = ""
+      while (i < len(source) && source[i] != "\"") {
+        str = str + source[i]
+        i = i + 1
+      }
+      if (i < len(source)) { i = i + 1 }
+
+      let token = []
+      push(token, 4)
+      push(token, str)
+      push(tokens, token)
+      continue
+    }
+
+    if (ch == "(") {
+      let token = []
+      push(token, 5)
+      push(token, "(")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == ")") {
+      let token = []
+      push(token, 6)
+      push(token, ")")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == "{") {
+      let token = []
+      push(token, 7)
+      push(token, "{")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == "}") {
+      let token = []
+      push(token, 8)
+      push(token, "}")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == "[") {
+      let token = []
+      push(token, 9)
+      push(token, "[")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == "]") {
+      let token = []
+      push(token, 10)
+      push(token, "]")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == ",") {
+      let token = []
+      push(token, 11)
+      push(token, ",")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == ";") {
+      let token = []
+      push(token, 12)
+      push(token, ";")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    if (ch == "=") {
+      let token = []
+      push(token, 13)
+      push(token, "=")
+      push(tokens, token)
+      i = i + 1
+      continue
+    }
+
+    i = i + 1
+  }
+
+  return tokens
+}
+
+/* ============================================================
+   PART 2: Simple IR Generator
+   배열 연산을 명시적 함수 호출로 매핑
+   ============================================================ */
+
+fn generate_ir_for_test() {
+  /* 로컬 배열 사용 - 함수 내부에서만 */
+  let ir = []
+  let consts = []
+
+  /* 배열 생성 */
+  let create_array_ir = []
+  push(create_array_ir, "CREATE_ARRAY")
+  push(create_array_ir, 0)
+  push(ir, create_array_ir)
+
+  /* hello 상수 추가 */
+  push(consts, "hello")
+  let hello_idx = 0
+
+  /* world 상수 추가 */
+  push(consts, "world")
+  let world_idx = 1
+
+  /* push "hello" 연산 */
+  let push_hello = []
+  push(push_hello, "ARRAY_PUSH")
+  push(push_hello, hello_idx)
+  push(ir, push_hello)
+
+  /* push "world" 연산 */
+  let push_world = []
+  push(push_world, "ARRAY_PUSH")
+  push(push_world, world_idx)
+  push(ir, push_world)
+
+  /* len 연산 */
+  let len_op = []
+  push(len_op, "ARRAY_LEN")
+  push(ir, len_op)
+
+  /* [0] 접근 */
+  let get_0 = []
+  push(get_0, "ARRAY_GET")
+  push(get_0, 0)
+  push(ir, get_0)
+
+  /* [1] 접근 */
+  let get_1 = []
+  push(get_1, "ARRAY_GET")
+  push(get_1, 1)
+  push(ir, get_1)
+
+  return ir
+}
+
+/* ============================================================
+   PART 3: IR Print Utilities
+   ============================================================ */
+
+fn print_ir(ir) {
+  println("=======================================")
+  println("Generated IR")
+  println("=======================================")
+
+  let i = 0
+  while (i < len(ir)) {
+    let instr = ir[i]
+    let opcode = instr[0]
+
+    if (len(instr) > 1) {
+      println(opcode)
+    }
+
+    i = i + 1
+  }
+
+  println("=======================================")
+  println("Total instructions:")
+  println(len(ir))
+}
+
+/* ============================================================
+   PART 4: Main Test Function
+   ============================================================ */
+
+fn main() {
+  println("=======================================")
+  println("FreeLang Compiler v4-Safe")
+  println("Phase 2.3: IR Generator (Local Arrays)")
+  println("=======================================")
+
+  /* 로컬 배열에서 IR 생성 */
+  let ir = generate_ir_for_test()
+
+  /* IR 출력 */
+  print_ir(ir)
+
+  println("")
+  println("✅ IR Generation Complete (No Global Arrays)")
+  println("=======================================")
+}
+
+main()

@@ -1,0 +1,7 @@
+fn main() {
+  println("Creating bytes...")
+  let b = bytes_new(256)
+  println("Created!")
+  println(b)
+}
+main()

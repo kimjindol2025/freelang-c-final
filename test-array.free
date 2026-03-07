@@ -1,0 +1,13 @@
+fn main() {
+  let arr = []
+  println("Empty array created")
+  push(arr, 1)
+  push(arr, 2)
+  push(arr, 3)
+  println("Pushed 3 elements")
+  println(len(arr))
+  println(arr[0])
+  println(arr[1])
+  println(arr[2])
+}
+main()

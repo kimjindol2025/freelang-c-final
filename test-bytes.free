@@ -1,0 +1,28 @@
+fn main() {
+  println("Testing bytes type...")
+  
+  let b = bytes_new(256)
+  println("Created bytes")
+  
+  bytes_set(b, 0, 0x7f)
+  bytes_set(b, 1, 0x45)
+  bytes_set(b, 2, 0x4c)
+  bytes_set(b, 3, 0x46)
+  
+  println("Set bytes [0x7f, 0x45, 0x4c, 0x46]")
+  
+  let v0 = bytes_get(b, 0)
+  let v1 = bytes_get(b, 1)
+  let v2 = bytes_get(b, 2)
+  let v3 = bytes_get(b, 3)
+  
+  println("Read bytes:")
+  println(v0)
+  println(v1)
+  println(v2)
+  println(v3)
+  
+  println("✅ bytes type works!")
+}
+
+main()

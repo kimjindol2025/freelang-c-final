@@ -8,10 +8,16 @@
 
 #include "freelang.h"
 
-/* I/O Functions (3) */
+/* I/O Functions (5) */
 fl_value_t fl_print(fl_value_t* args, size_t argc);
 fl_value_t fl_println(fl_value_t* args, size_t argc);
 fl_value_t fl_input(fl_value_t* args, size_t argc);
+fl_value_t fl_write_bytes_file(fl_value_t* args, size_t argc);
+fl_value_t fl_read_file(fl_value_t* args, size_t argc);
+
+/* Core Array Functions */
+fl_value_t fl_len(fl_value_t* args, size_t argc);
+fl_value_t fl_push(fl_value_t* args, size_t argc);
 
 /* String Functions (16) */
 fl_value_t fl_string_length(fl_value_t* args, size_t argc);
@@ -81,6 +87,14 @@ fl_value_t fl_object_assign(fl_value_t* args, size_t argc);
 /* JSON Functions (2) */
 fl_value_t fl_json_stringify(fl_value_t* args, size_t argc);
 fl_value_t fl_json_parse(fl_value_t* args, size_t argc);
+
+/* Bytes Functions (5) - Phase 3 */
+fl_value_t fl_bytes_new(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_len(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_set(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_get(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_write_u32(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_write_u64(fl_value_t* args, size_t argc);
 
 /* Control Flow (2) */
 fl_value_t fl_assert(fl_value_t* args, size_t argc);
