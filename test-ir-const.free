@@ -1,0 +1,24 @@
+let ir_const_pool = []
+
+fn ir_const(value) {
+  push(ir_const_pool, value)
+  return len(ir_const_pool) - 1
+}
+
+fn main() {
+  println("Adding constants...")
+  ir_const("PUSH")
+  ir_const("CALL")
+  ir_const("RET")
+  
+  println("Pool length:")
+  println(len(ir_const_pool))
+  
+  println("Pool contents:")
+  let i = 0
+  while (i < len(ir_const_pool)) {
+    println(ir_const_pool[i])
+    i = i + 1
+  }
+}
+main()

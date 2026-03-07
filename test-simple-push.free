@@ -1,0 +1,9 @@
+let arr = []
+fn main() {
+  push(arr, "hello")
+  push(arr, "world")
+  println(len(arr))
+  println(arr[0])
+  println(arr[1])
+}
+main()

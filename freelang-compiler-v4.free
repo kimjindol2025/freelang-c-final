@@ -1,0 +1,508 @@
+/*
+ * FreeLang Self-Hosting Compiler v4
+ * Phase 2.1 + 2.2 + 2.3: Lexer + Parser + IR Generator (Fixed)
+ *
+ * 지원: hello.free → IR 생성
+ * Array literal 문제 해결: IR 구조 생성 함수 사용
+ */
+
+/* ============================================================
+   PART 1: Lexer (Tokenizer)
+   ============================================================ */
+
+fn is_whitespace(ch) {
+  if (ch == " ") { return true }
+  if (ch == "\t") { return true }
+  if (ch == "\n") { return true }
+  if (ch == "\r") { return true }
+  return false
+}
+
+fn is_digit(ch) {
+  if (ch >= "0" && ch <= "9") { return true }
+  return false
+}
+
+fn is_alpha(ch) {
+  if (ch >= "a" && ch <= "z") { return true }
+  if (ch >= "A" && ch <= "Z") { return true }
+  if (ch == "_") { return true }
+  return false
+}
+
+fn is_alnum(ch) {
+  if (is_alpha(ch)) { return true }
+  if (is_digit(ch)) { return true }
+  return false
+}
+
+fn is_keyword(word) {
+  if (word == "fn") { return true }
+  if (word == "let") { return true }
+  if (word == "if") { return true }
+  if (word == "else") { return true }
+  if (word == "while") { return true }
+  if (word == "for") { return true }
+  if (word == "return") { return true }
+  if (word == "true") { return true }
+  if (word == "false") { return true }
+  if (word == "null") { return true }
+  return false
+}
+
+fn tokenize(source) {
+  let tokens = []
+  let i = 0
+  let len = len(source)
+
+  while (i < len) {
+    let ch = source[i]
+
+    if (is_whitespace(ch)) {
+      i = i + 1
+      continue
+    }
+
+    if (ch == "/" && i + 1 < len && source[i + 1] == "*") {
+      i = i + 2
+      while (i + 1 < len) {
+        if (source[i] == "*" && source[i + 1] == "/") {
+          i = i + 2
+          break
+        }
+        i = i + 1
+      }
+      continue
+    }
+
+    if (ch == "/" && i + 1 < len && source[i + 1] == "/") {
+      while (i < len && source[i] != "\n") {
+        i = i + 1
+      }
+      continue
+    }
+
+    if (ch == "\"") {
+      i = i + 1
+      let str = ""
+      while (i < len && source[i] != "\"") {
+        if (source[i] == "\\") {
+          i = i + 1
+          if (i < len) {
+            if (source[i] == "n") {
+              str = str + "\n"
+            } else if (source[i] == "t") {
+              str = str + "\t"
+            } else {
+              str = str + source[i]
+            }
+          }
+        } else {
+          str = str + source[i]
+        }
+        i = i + 1
+      }
+      if (i < len) { i = i + 1 }
+      push(tokens, [3, str])
+      continue
+    }
+
+    if (is_digit(ch)) {
+      let num = ""
+      while (i < len && is_digit(source[i])) {
+        num = num + source[i]
+        i = i + 1
+      }
+      push(tokens, [2, num])
+      continue
+    }
+
+    if (is_alpha(ch)) {
+      let word = ""
+      while (i < len && is_alnum(source[i])) {
+        word = word + source[i]
+        i = i + 1
+      }
+      if (is_keyword(word)) {
+        push(tokens, [4, word])
+      } else {
+        push(tokens, [1, word])
+      }
+      continue
+    }
+
+    /* 기호 */
+    if (ch == "(") { push(tokens, [5, "("]); i = i + 1; continue }
+    if (ch == ")") { push(tokens, [6, ")"]); i = i + 1; continue }
+    if (ch == "{") { push(tokens, [7, "{"]); i = i + 1; continue }
+    if (ch == "}") { push(tokens, [8, "}"]); i = i + 1; continue }
+    if (ch == "[") { push(tokens, [9, "["]); i = i + 1; continue }
+    if (ch == "]") { push(tokens, [10, "]"]); i = i + 1; continue }
+    if (ch == ",") { push(tokens, [11, ","]); i = i + 1; continue }
+    if (ch == ";") { push(tokens, [13, ";"]); i = i + 1; continue }
+    if (ch == "=") { push(tokens, [14, "="]); i = i + 1; continue }
+    if (ch == "+") { push(tokens, [15, "+"]); i = i + 1; continue }
+    if (ch == "-") { push(tokens, [16, "-"]); i = i + 1; continue }
+    if (ch == "*") { push(tokens, [17, "*"]); i = i + 1; continue }
+    if (ch == "/") { push(tokens, [18, "/"]); i = i + 1; continue }
+
+    i = i + 1
+  }
+
+  push(tokens, [0, ""])
+  return tokens
+}
+
+/* ============================================================
+   PART 2: Parser
+   ============================================================ */
+
+let parser_tokens = []
+let parser_pos = 0
+
+fn parser_init(tokens) {
+  parser_tokens = tokens
+  parser_pos = 0
+}
+
+fn parser_current() {
+  if (parser_pos < len(parser_tokens)) {
+    return parser_tokens[parser_pos]
+  }
+  return [0, ""]
+}
+
+fn parser_peek_type() {
+  let token = parser_current()
+  return token[0]
+}
+
+fn parser_peek_value() {
+  let token = parser_current()
+  return token[1]
+}
+
+fn parser_advance() {
+  parser_pos = parser_pos + 1
+}
+
+fn parser_expect(type) {
+  let token = parser_current()
+  if (token[0] == type) {
+    parser_advance()
+    return token[1]
+  }
+  return null
+}
+
+/* AST 노드 생성 */
+fn ast_program(functions, statements) {
+  return ["Program", functions, statements]
+}
+
+fn ast_function(name, params, body) {
+  return ["Function", name, params, body]
+}
+
+fn ast_expr_stmt(expr) {
+  return ["ExprStmt", expr]
+}
+
+fn ast_call(name, args) {
+  return ["Call", name, args]
+}
+
+fn ast_literal(type, value) {
+  return ["Literal", type, value]
+}
+
+/* 파서 함수들 */
+fn parse_primary() {
+  let type = parser_peek_type()
+
+  if (type == 3) {
+    /* STRING */
+    let value = parser_peek_value()
+    parser_advance()
+    return ast_literal("string", value)
+  }
+
+  if (type == 2) {
+    /* NUMBER */
+    let value = parser_peek_value()
+    parser_advance()
+    return ast_literal("number", value)
+  }
+
+  if (type == 1) {
+    /* IDENTIFIER */
+    let name = parser_peek_value()
+    parser_advance()
+
+    /* 함수 호출인지 확인 */
+    if (parser_peek_type() == 5) {
+      /* ( */
+      parser_advance()
+      let args = []
+      while (parser_peek_type() != 6) {
+        /* ) */
+        let arg = parse_expression()
+        push(args, arg)
+        if (parser_peek_type() == 11) {
+          /* , */
+          parser_advance()
+        }
+      }
+      parser_expect(6)
+      /* ) */
+      return ast_call(name, args)
+    }
+
+    return ["Identifier", name]
+  }
+
+  if (type == 5) {
+    /* ( */
+    parser_advance()
+    let expr = parse_expression()
+    parser_expect(6)
+    /* ) */
+    return expr
+  }
+
+  return null
+}
+
+fn parse_expression() {
+  return parse_primary()
+}
+
+fn parse_statement() {
+  let type = parser_peek_type()
+
+  if (type == 4) {
+    /* KEYWORD */
+    let keyword = parser_peek_value()
+
+    if (keyword == "fn") {
+      return parse_function()
+    }
+  }
+
+  /* Expression statement */
+  let expr = parse_expression()
+  if (parser_peek_type() == 13) {
+    /* ; */
+    parser_advance()
+  }
+  return ast_expr_stmt(expr)
+}
+
+fn parse_function() {
+  parser_expect(4)
+  /* fn */
+  let name = parser_expect(1)
+  /* function name */
+  parser_expect(5)
+  /* ( */
+  let params = []
+  while (parser_peek_type() != 6) {
+    /* ) */
+    let param = parser_expect(1)
+    /* parameter */
+    push(params, param)
+    if (parser_peek_type() == 11) {
+      /* , */
+      parser_advance()
+    }
+  }
+  parser_expect(6)
+  /* ) */
+  parser_expect(7)
+  /* { */
+  let body = []
+  while (parser_peek_type() != 8) {
+    /* } */
+    let stmt = parse_statement()
+    push(body, stmt)
+  }
+  parser_expect(8)
+  /* } */
+  return ast_function(name, params, body)
+}
+
+fn parse_program() {
+  let functions = []
+  let statements = []
+
+  while (parser_peek_type() != 0) {
+    /* EOF */
+    let type = parser_peek_type()
+
+    if (type == 4 && parser_peek_value() == "fn") {
+      let func = parse_function()
+      push(functions, func)
+    } else {
+      let stmt = parse_statement()
+      push(statements, stmt)
+    }
+  }
+
+  return ast_program(functions, statements)
+}
+
+/* ============================================================
+   PART 3: IR Generator
+   ============================================================ */
+
+let ir_instructions = []
+let ir_const_pool = []
+let ir_instruction_count = 0
+
+fn ir_const(value) {
+  let i = 0
+  while (i < len(ir_const_pool)) {
+    if (ir_const_pool[i] == value) {
+      return i
+    }
+    i = i + 1
+  }
+  push(ir_const_pool, value)
+  return len(ir_const_pool) - 1
+}
+
+fn ir_make_instr(opcode, op1, op2) {
+  let instr_id = ir_instruction_count
+  ir_instruction_count = ir_instruction_count + 1
+  return instr_id
+}
+
+fn ir_emit(opcode, operand1, operand2) {
+  ir_make_instr(opcode, operand1, operand2)
+}
+
+fn gen_expr(expr) {
+  if (expr == null) {
+    return
+  }
+
+  let type = expr[0]
+
+  if (type == "Literal") {
+    let value = expr[2]
+    ir_emit("PUSH_CONST", ir_const(value), 0)
+  }
+
+  if (type == "Call") {
+    let name = expr[1]
+    let args = expr[2]
+    let argc = len(args)
+    let i = 0
+    while (i < argc) {
+      gen_expr(args[i])
+      i = i + 1
+    }
+    ir_emit("CALL", ir_const(name), argc)
+  }
+}
+
+fn gen_stmt(stmt) {
+  if (stmt == null) {
+    return
+  }
+
+  let type = stmt[0]
+
+  if (type == "ExprStmt") {
+    let expr = stmt[1]
+    gen_expr(expr)
+    ir_emit("POP", 0, 0)
+  }
+}
+
+fn gen_function(func) {
+  let name = func[1]
+  let body = func[3]
+
+  ir_emit("FUNC_LABEL", ir_const(name), 0)
+
+  let i = 0
+  while (i < len(body)) {
+    gen_stmt(body[i])
+    i = i + 1
+  }
+
+  ir_emit("RET", 0, 0)
+}
+
+fn gen_program(program) {
+  let functions = program[1]
+  let statements = program[2]
+
+  let i = 0
+  while (i < len(functions)) {
+    gen_function(functions[i])
+    i = i + 1
+  }
+
+  ir_emit("PROG_START", 0, 0)
+
+  i = 0
+  while (i < len(statements)) {
+    gen_stmt(statements[i])
+    i = i + 1
+  }
+  ir_emit("PROG_END", 0, 0)
+}
+
+fn print_ir_stats() {
+  println("=======================================")
+  println("IR Generation Statistics")
+  println("=======================================")
+  println("Instructions generated:")
+  println(ir_instruction_count)
+  println("Constants in pool:")
+  println(len(ir_const_pool))
+  println("=======================================")
+  println("Constants:")
+  let i = 0
+  while (i < len(ir_const_pool)) {
+    println(ir_const_pool[i])
+    i = i + 1
+  }
+}
+
+/* ============================================================
+   Main: Compiler Test
+   ============================================================ */
+
+fn main() {
+  println("=======================================")
+  println("FreeLang Compiler v4 - Lexer + Parser + IR")
+  println("=======================================")
+
+  /* 소스 읽기 */
+  let source = read_file("hello.free")
+  println("✓ Source loaded")
+
+  /* 렉서 */
+  let tokens = tokenize(source)
+  println("✓ Tokenized")
+
+  /* 파서 */
+  parser_init(tokens)
+  let ast = parse_program()
+  println("✓ Parsed")
+
+  /* IR 생성 */
+  gen_program(ast)
+  println("✓ IR Generated")
+
+  print_ir_stats()
+
+  println("=======================================")
+  println("✅ Compilation Stage Complete")
+  println("=======================================")
+}
+
+main()
