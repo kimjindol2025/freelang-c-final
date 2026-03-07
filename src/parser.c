@@ -389,8 +389,175 @@ static ASTNode* parse_throw_stmt(fl_parser_t *p) {
     return node;
 }
 
+/* Phase 8: @cluster(n) / @autorestart(true) 어노테이션 파싱
+ * 어노테이션은 fn 선언 앞에 붙으며, NODE_DECORATOR_DECL로 래핑됨 */
+static ASTNode* parse_annotation_decl(fl_parser_t *p) {
+    /* @ 소비 */
+    advance(p);
+
+    /* 어노테이션 이름 */
+    char ann_name[64] = "";
+    if (check(p, TOK_IDENT)) {
+        Token t = advance(p);
+        strncpy(ann_name, t.value, 63);
+    }
+
+    /* 파라미터 (옵션): @cluster(4), @autorestart(true) */
+    char ann_param[64] = "";
+    if (match(p, TOK_LPAREN)) {
+        Token param_tok = current_token(p);
+        if (!check(p, TOK_RPAREN)) {
+            advance(p);
+            strncpy(ann_param, param_tok.value ? param_tok.value : "", 63);
+        }
+        match(p, TOK_RPAREN);
+    }
+
+    /* @log_level(debug|info|warn|error|off) → 컴파일 레벨 설정 후 계속 파싱 */
+    if (strcmp(ann_name, "log_level") == 0) {
+        /* scan_log_level_annotation이 runtime 단계에서 처리하므로
+         * 파서는 이 어노테이션을 무시하고 다음 statement를 반환 */
+        ASTNode* next = NULL;
+        if (!is_at_end(p)) {
+            next = parse_statement(p);
+        }
+        return next;  /* 어노테이션은 투명하게 처리 */
+    }
+
+    /* Phase 8: MOSS-Autodoc @api 어노테이션
+     * 문법: @api(path: "/...", method: "GET", summary: "...", tag: "...", returns: "...")
+     * fn 선언 앞에만 사용 가능. fn_decl 노드에 메타데이터 직접 주입. */
+    if (strcmp(ann_name, "api") == 0) {
+        char api_path[512]    = "/";
+        char api_method[16]   = "GET";
+        char api_summary[512] = "";
+        char api_tag[128]     = "";
+        char api_returns[64]  = "object";
+
+        /* @api(key: "value", ...) 파싱 */
+        if (ann_param[0] == '\0') {
+            /* ann_param이 비어있으면 아직 괄호를 소비하지 않은 상태 */
+            if (match(p, TOK_LPAREN)) {
+                while (!check(p, TOK_RPAREN) && !is_at_end(p)) {
+                    char key[64] = "";
+                    char val[512] = "";
+                    /* key */
+                    if (check(p, TOK_IDENT)) {
+                        Token kt = advance(p);
+                        strncpy(key, kt.value, 63);
+                    }
+                    match(p, TOK_COLON);
+                    /* value - 문자열 리터럴 */
+                    if (check(p, TOK_STRING)) {
+                        Token vt = advance(p);
+                        strncpy(val, vt.value, 511);
+                    } else if (check(p, TOK_IDENT)) {
+                        Token vt = advance(p);
+                        strncpy(val, vt.value, 511);
+                    }
+                    /* 키별 할당 */
+                    if      (strcmp(key, "path")    == 0) strncpy(api_path,    val, 511);
+                    else if (strcmp(key, "method")  == 0) strncpy(api_method,  val, 15);
+                    else if (strcmp(key, "summary") == 0) strncpy(api_summary, val, 511);
+                    else if (strcmp(key, "tag")     == 0) strncpy(api_tag,     val, 127);
+                    else if (strcmp(key, "returns") == 0) strncpy(api_returns, val, 63);
+                    match(p, TOK_COMMA);
+                }
+                match(p, TOK_RPAREN);
+            }
+        }
+
+        /* 뒤따르는 fn 선언 파싱 */
+        ASTNode *fn = NULL;
+        if (check(p, TOK_FN)) {
+            fn = parse_fn_decl(p);
+        } else {
+            fn = parse_statement(p);
+        }
+
+        /* fn_decl 노드에 API 메타데이터 주입 */
+        if (fn && fn->type == NODE_FN_DECL) {
+            fn->data.fn_decl.has_api_annotation = 1;
+            strncpy(fn->data.fn_decl.api_path,    api_path,    511);
+            strncpy(fn->data.fn_decl.api_method,  api_method,  15);
+            strncpy(fn->data.fn_decl.api_summary, api_summary, 511);
+            strncpy(fn->data.fn_decl.api_tag,     api_tag,     127);
+            strncpy(fn->data.fn_decl.api_returns, api_returns, 63);
+        }
+        return fn;  /* decorator 래핑 없이 fn_decl 직접 반환 */
+    }
+
+    /* Phase 6: @vectorize { body } → NODE_VECTORIZE_HINT */
+    if (strcmp(ann_name, "vectorize") == 0) {
+        ASTNode* body = NULL;
+        if (check(p, TOK_LBRACE)) {
+            body = parse_block(p);
+        } else {
+            body = parse_statement(p);
+        }
+        ASTNode* vnode = ast_alloc(NODE_VECTORIZE_HINT);
+        if (vnode) {
+            vnode->data.vectorize_hint.body = body;
+            /* ann_param: "128", "256", "512" → simd_width; 없으면 0(자동) */
+            vnode->data.vectorize_hint.simd_width = ann_param[0] ? atoi(ann_param) : 0;
+        }
+        return vnode;
+    }
+
+    /* 뒤따르는 실제 선언 파싱 */
+    ASTNode* inner = NULL;
+    if (check(p, TOK_AT)) {
+        inner = parse_annotation_decl(p); /* 중첩 어노테이션 */
+    } else if (check(p, TOK_FN)) {
+        inner = parse_fn_decl(p);
+    } else if (check(p, TOK_LET) || check(p, TOK_VAR) || check(p, TOK_CONST)) {
+        inner = parse_var_decl(p);
+    }
+
+    /* NODE_DECORATOR_DECL에 저장 */
+    ASTNode* node = ast_alloc(NODE_DECORATOR_DECL);
+    if (node && inner) {
+        /* decorator_decl.name: "cluster(4)", "autorestart(true)", etc */
+        snprintf(node->data.decorator_decl.name,
+                 sizeof(node->data.decorator_decl.name),
+                 "%s(%s)", ann_name, ann_param);
+        node->data.decorator_decl.target = inner;
+    }
+    return node;
+}
+
 static ASTNode* parse_statement(fl_parser_t *p) {
     if (is_at_end(p)) return NULL;
+
+    /* Phase 8: @cluster/@autorestart/@daemon 어노테이션 */
+    if (check(p, TOK_AT)) {
+        /* 다음 토큰이 식별자인지 확인 */
+        if (p->pos + 1 < p->token_count &&
+            p->tokens[p->pos + 1].type == TOK_IDENT) {
+            return parse_annotation_decl(p);
+        }
+    }
+
+    /* Phase 6: aligned let/const/var x = ... → NODE_ALIGNED_DECL */
+    if (check(p, TOK_ALIGNED)) {
+        advance(p); /* consume 'aligned' */
+        int align_bytes = 32; /* 기본값: 32바이트 (AVX2) */
+        /* aligned(64) 형태의 파라미터 처리 */
+        if (match(p, TOK_LPAREN)) {
+            if (check(p, TOK_NUMBER)) {
+                Token nt = advance(p);
+                align_bytes = (int)nt.num_value;
+            }
+            match(p, TOK_RPAREN);
+        }
+        ASTNode* decl = parse_var_decl(p);
+        ASTNode* anode = ast_alloc(NODE_ALIGNED_DECL);
+        if (anode) {
+            anode->data.aligned_decl.align_bytes = align_bytes;
+            anode->data.aligned_decl.decl = decl;
+        }
+        return anode;
+    }
 
     if (check(p, TOK_LET) || check(p, TOK_VAR) || check(p, TOK_CONST)) {
         return parse_var_decl(p);

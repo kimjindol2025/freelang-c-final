@@ -18,6 +18,7 @@
 #include "../include/cluster.h"
 #include "../include/introspect.h"
 #include "../include/logger.h"
+#include "../include/autodoc.h"
 #include <sys/wait.h>
 
 /* ============================================================

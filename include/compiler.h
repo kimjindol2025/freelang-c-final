@@ -87,6 +87,12 @@ void compiler_free(Compiler *c);
 Chunk* compile_program(Compiler *c, fl_ast_node_t *node);
 
 /**
+ * @log_level 어노테이션 소스 스캔 (컴파일 전 호출)
+ * 형식: "@log_level(info)" → fl_compile_log_level 설정
+ */
+void scan_log_level_annotation(const char* source);
+
+/**
  * Compile a single expression
  */
 Chunk* compile_expr(Compiler *c, fl_ast_node_t *node);

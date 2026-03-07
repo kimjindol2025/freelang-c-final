@@ -1,0 +1,30 @@
+/**
+ * Proof-Logger 데모 - "기록이 증명이다"
+ *
+ * @log_level 어노테이션: 컴파일 시 INFO 이상만 바이너리에 포함
+ * log_debug() 호출은 컴파일러가 NOP으로 대체 → 런타임 오버헤드 0
+ */
+@log_level(info)
+
+log_configure({
+    "level": "info",
+    "file": "/tmp/freelang-proof.log",
+    "gogs_host": "gogs.dclub.kr",
+    "gogs_port": 80,
+    "gogs_author": "FreeLang-Proof-Logger",
+    "json": true,
+    "console": true,
+    "iouring": true
+})
+
+log_debug("이 메시지는 컴파일러가 NOP으로 대체 (@log_level info 설정)")
+
+log_info("Proof-Logger 시작: 기록이 증명이다")
+log_info("io_uring Zero-Wait 파일 I/O 활성화")
+log_warn("경고: WARN 이상은 Gogs guestbook에 전송됨")
+log_error("에러 테스트: 실제 오류 아님")
+
+log_flush()
+
+let stats = log_stats()
+log_info("로깅 완료. 증명이 기록되었습니다.")

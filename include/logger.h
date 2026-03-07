@@ -50,10 +50,10 @@ static inline const char* fl_log_level_name(fl_log_level_t level) {
    SPSC 링 버퍼 (Single Producer Single Consumer, Lockless)
    ============================================================ */
 
-#define FL_LOG_RING_SHIFT   12                      /* 2^12 = 4096 슬롯 */
+#define FL_LOG_RING_SHIFT   10                      /* 2^10 = 1024 슬롯 (스택 안전) */
 #define FL_LOG_RING_SIZE    (1u << FL_LOG_RING_SHIFT)
 #define FL_LOG_RING_MASK    (FL_LOG_RING_SIZE - 1u)
-#define FL_LOG_MSG_MAX      1024                    /* 메시지 최대 길이 */
+#define FL_LOG_MSG_MAX      512                     /* 메시지 최대 길이 */
 
 typedef struct {
     char            msg[FL_LOG_MSG_MAX];  /* 포맷된 로그 메시지 */
@@ -66,7 +66,7 @@ typedef struct {
     fl_log_entry_t      slots[FL_LOG_RING_SIZE];
     _Atomic uint64_t    head;   /* 생산자 위치 (메인 스레드) */
     _Atomic uint64_t    tail;   /* 소비자 위치 (워커 스레드) */
-    char                _pad[64 - sizeof(_Atomic uint64_t) * 2]; /* 캐시라인 패딩 */
+    char                _pad[48]; /* 캐시라인 패딩 (고정 크기) */
 } fl_log_ring_t;
 
 /* ============================================================

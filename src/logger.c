@@ -27,6 +27,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>
+#include <linux/io_uring.h>  /* 실제 io_uring_params 구조체 (커널 헤더) */
 
 #include "../include/logger.h"
 #include "../include/runtime.h"
@@ -144,21 +145,8 @@ typedef struct {
 #define IORING_OP_WRITE  23
 
 static bool uring_init(fl_iouring_t* u, unsigned entries) {
-    /* io_uring_params 정의 (커널과 공유되는 파라미터) */
-    struct {
-        uint32_t sq_entries, cq_entries, flags;
-        uint32_t sq_thread_cpu, sq_thread_idle, features, wq_fd;
-        uint32_t resv[3];
-        struct {
-            uint32_t head, tail, ring_mask, ring_entries, flags, dropped;
-            uint32_t array;  /* 오프셋 */
-        } sq_off;
-        struct {
-            uint32_t head, tail, ring_mask, ring_entries, overflow;
-            uint32_t cqes;  /* 오프셋 */
-            uint64_t flags;
-        } cq_off;
-    } params;
+    /* 실제 커널 io_uring_params 구조체 사용 (linux/io_uring.h) */
+    struct io_uring_params params;
     memset(&params, 0, sizeof(params));
 
     long fd = syscall(SYS_io_uring_setup, entries, &params);
@@ -166,17 +154,17 @@ static bool uring_init(fl_iouring_t* u, unsigned entries) {
 
     u->ring_fd = (int)fd;
 
-    /* SQ 링 mmap */
+    /* SQ 링 mmap (IORING_OFF_SQ_RING = 0) */
     size_t sq_ring_sz = params.sq_off.array + params.sq_entries * sizeof(uint32_t);
     u->sq_ring = mmap(NULL, sq_ring_sz, PROT_READ | PROT_WRITE,
-                      MAP_SHARED | MAP_POPULATE, fd, 0);  /* IORING_OFF_SQ_RING = 0 */
+                      MAP_SHARED | MAP_POPULATE, fd, IORING_OFF_SQ_RING);
     if (u->sq_ring == MAP_FAILED) { close(fd); return false; }
     u->sq_ring_sz = sq_ring_sz;
 
     /* SQE 배열 mmap */
-    u->sqe_sz = params.sq_entries * 64;
+    u->sqe_sz = params.sq_entries * sizeof(fl_sqe_t);
     u->sqes = mmap(NULL, u->sqe_sz, PROT_READ | PROT_WRITE,
-                   MAP_SHARED | MAP_POPULATE, fd, 0x10000000ULL); /* IORING_OFF_SQES */
+                   MAP_SHARED | MAP_POPULATE, fd, IORING_OFF_SQES);
     if (u->sqes == MAP_FAILED) {
         munmap(u->sq_ring, sq_ring_sz);
         close(fd);
@@ -186,7 +174,7 @@ static bool uring_init(fl_iouring_t* u, unsigned entries) {
     /* CQ 링 mmap */
     size_t cq_ring_sz = params.cq_off.cqes + params.cq_entries * sizeof(fl_cqe_t);
     u->cq_ring = mmap(NULL, cq_ring_sz, PROT_READ | PROT_WRITE,
-                      MAP_SHARED | MAP_POPULATE, fd, 0x8000000ULL); /* IORING_OFF_CQ_RING */
+                      MAP_SHARED | MAP_POPULATE, fd, IORING_OFF_CQ_RING);
     if (u->cq_ring == MAP_FAILED) {
         munmap(u->sqes, u->sqe_sz);
         munmap(u->sq_ring, sq_ring_sz);
@@ -196,14 +184,14 @@ static bool uring_init(fl_iouring_t* u, unsigned entries) {
     u->cq_ring_sz = cq_ring_sz;
 
     uint8_t* sqb = (uint8_t*)u->sq_ring;
-    u->sq_head     = (uint32_t*)(sqb + params.sq_off.head);
-    u->sq_tail     = (uint32_t*)(sqb + params.sq_off.tail);
+    u->sq_head      = (uint32_t*)(sqb + params.sq_off.head);
+    u->sq_tail      = (uint32_t*)(sqb + params.sq_off.tail);
     u->sq_ring_mask = (uint32_t*)(sqb + params.sq_off.ring_mask);
-    u->sq_array    = (uint32_t*)(sqb + params.sq_off.array);
+    u->sq_array     = (uint32_t*)(sqb + params.sq_off.array);
 
     uint8_t* cqb = (uint8_t*)u->cq_ring;
-    u->cq_head     = (uint32_t*)(cqb + params.cq_off.head);
-    u->cq_tail     = (uint32_t*)(cqb + params.cq_off.tail);
+    u->cq_head      = (uint32_t*)(cqb + params.cq_off.head);
+    u->cq_tail      = (uint32_t*)(cqb + params.cq_off.tail);
     u->cq_ring_mask = (uint32_t*)(cqb + params.cq_off.ring_mask);
 
     u->initialized = true;
@@ -236,7 +224,7 @@ static bool uring_write_async(fl_iouring_t* u, int fd, const void* buf, size_t l
     sqe->fd        = fd;
     sqe->addr      = (uint64_t)(uintptr_t)buf;
     sqe->len       = (uint32_t)len;
-    sqe->off       = (uint64_t)off;
+    sqe->off       = (off == -1) ? (uint64_t)-1 : (uint64_t)off; /* -1 = 현재 파일 위치 */
     sqe->user_data = (uint64_t)len;
 
     u->sq_array[idx] = idx;
@@ -328,26 +316,10 @@ static void gogs_post_log(fl_logger_t* logger, fl_log_level_t level, const char*
 
 static void worker_write_file(fl_logger_t* logger, const char* line, size_t len) {
     if (logger->file_fd < 0) return;
-
-    if (logger->config.use_iouring && logger->uring.initialized) {
-        /* io_uring 비동기 쓰기 */
-        static _Thread_local off_t file_offset = 0;
-        if (file_offset == 0) {
-            file_offset = lseek(logger->file_fd, 0, SEEK_END);
-        }
-        /* 버퍼는 워커 스레드 로컬 → 안전 */
-        if (uring_write_async(&logger->uring, logger->file_fd, line, len, file_offset)) {
-            file_offset += (off_t)len;
-        } else {
-            /* io_uring 실패 시 pwrite 폴백 */
-            off_t cur = lseek(logger->file_fd, 0, SEEK_END);
-            pwrite(logger->file_fd, line, len, cur);
-        }
-    } else {
-        /* 동기 append (워커 스레드에서만 호출되므로 안전) */
-        off_t cur = lseek(logger->file_fd, 0, SEEK_END);
-        pwrite(logger->file_fd, line, len, cur);
-    }
+    /* O_APPEND로 열렸으므로 write()가 원자적으로 파일 끝에 추가
+     * io_uring은 고급 최적화용: 현재는 워커 스레드 직접 write()가 더 안전 */
+    ssize_t r = write(logger->file_fd, line, len);
+    (void)r;
 }
 
 static void* logger_worker(void* arg) {

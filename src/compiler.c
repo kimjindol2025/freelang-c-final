@@ -503,6 +503,29 @@ static void analyze_captures(Compiler* c, fl_ast_node_t* node, int parent_scope_
 
 static void compile_node(Compiler* c, fl_ast_node_t* node);
 
+/* @log_level 어노테이션 스캔: 소스 텍스트에서 직접 파싱
+ * 형식: "@log_level(debug)" 또는 "@log_level(\"info\")"
+ * AST 레벨이 아닌 소스 스캔으로 처리 (컴파일 전 최우선 적용) */
+void scan_log_level_annotation(const char* source) {
+    if (!source) return;
+    const char* p = strstr(source, "@log_level");
+    if (!p) return;
+    p += strlen("@log_level");
+    while (*p == ' ' || *p == '\t') p++;
+    if (*p != '(') return;
+    p++;
+    while (*p == ' ' || *p == '"' || *p == '\'') p++;
+    char level[16] = {0};
+    size_t i = 0;
+    while (*p && *p != ')' && *p != '"' && *p != '\'' && i < 15) {
+        level[i++] = *p++;
+    }
+    level[i] = '\0';
+    /* 공백 제거 */
+    while (i > 0 && (level[i-1] == ' ' || level[i-1] == '\t')) level[--i] = '\0';
+    if (i > 0) compiler_apply_log_level(level);
+}
+
 Chunk* compile_program(Compiler* c, fl_ast_node_t* node) {
     if (!c || !node || node->type != NODE_PROGRAM) {
         return NULL;
@@ -1373,12 +1396,35 @@ static void compile_node(Compiler* c, fl_ast_node_t* node) {
                         chunk_emit_opcode(c->chunk, FL_OP_PUSH_STRING);
                         chunk_emit_addr(c->chunk, (uint32_t)str_idx);
                     } else {
-                        /* Unknown property - push property name as string */
+                        /* Object property access: push key string + OBJECT_GET */
                         int str_idx = chunk_emit_string(c->chunk, prop_name);
                         chunk_emit_opcode(c->chunk, FL_OP_PUSH_STRING);
                         chunk_emit_addr(c->chunk, (uint32_t)str_idx);
+                        chunk_emit_opcode(c->chunk, FL_OP_OBJECT_GET);
                     }
                 }
+            }
+            break;
+        }
+
+        /* Phase 6: NODE_VECTORIZE_HINT - @vectorize { body }
+           컴파일러는 body를 그대로 컴파일하되 SIMD 힌트 NOP 마커 삽입
+           (실제 SIMD 변환은 GCC -O3 -ftree-vectorize에 위임) */
+        case NODE_VECTORIZE_HINT: {
+            /* SIMD 마커: FL_OP_NOP로 표시 (향후 SIMD 코드 범위 표시) */
+            chunk_emit_opcode(c->chunk, FL_OP_NOP);
+            if (node->data.vectorize_hint.body) {
+                compile_node(c, node->data.vectorize_hint.body);
+            }
+            chunk_emit_opcode(c->chunk, FL_OP_NOP);
+            break;
+        }
+
+        /* Phase 6: NODE_ALIGNED_DECL - aligned let x = ...
+           aligned는 컴파일러 힌트: 내부 decl을 그대로 컴파일 */
+        case NODE_ALIGNED_DECL: {
+            if (node->data.aligned_decl.decl) {
+                compile_node(c, node->data.aligned_decl.decl);
             }
             break;
         }

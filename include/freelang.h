@@ -222,6 +222,12 @@ typedef enum {
     FL_OP_CLUSTER_INIT,      /* [n] → [] (fork N workers) */
     FL_OP_DAEMONIZE,         /* [] → [] (background daemon) */
 
+    /* Compression / BitPack (MOSS-Compressor v1.0) */
+    FL_OP_BIT_PACK,          /* [val, bits] → [] — 비트 누적 캐시에 패킹 */
+    FL_OP_BIT_FLUSH,         /* [] → [bytes] — 누적 비트 → bytes로 플러시 */
+    FL_OP_COMPRESS,          /* [bytes, level] → [bytes] — GZIP 압축 */
+    FL_OP_DECOMPRESS,        /* [bytes] → [bytes] — GZIP 해제 */
+
     /* Other */
     FL_OP_HALT,
     FL_OP_NOP

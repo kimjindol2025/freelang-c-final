@@ -455,6 +455,9 @@ fl_value_t fl_runtime_eval(fl_runtime_t* runtime, const char* source) {
         return result;
     }
 
+    /* @log_level 어노테이션 소스 스캔 (컴파일 전 적용) */
+    scan_log_level_annotation(source);
+
     fprintf(stderr, "[RUNTIME] compiling AST to bytecode...\n");
     Chunk* chunk = compile_program(compiler, ast);
     fprintf(stderr, "[RUNTIME] compile result: chunk=%p code_len=%zu\n",
