@@ -40,6 +40,9 @@ typedef enum {
     TOK_ASYNC,
     TOK_AWAIT,
     TOK_MATCH,
+    TOK_REACTIVE,       // "reactive" keyword (Phase 4)
+    TOK_WATCH,          // "watch" keyword/decorator (Phase 4)
+    TOK_TRANSACTION,    // "transaction" keyword/decorator (Phase 4)
 
     // Operators (26)
     TOK_PLUS,
@@ -95,8 +98,8 @@ typedef enum {
     TOK_EOF
 } TokenType;
 
-#define TOK_KEYWORD_COUNT 28
-#define TOK_TOTAL_COUNT 62
+#define TOK_KEYWORD_COUNT 31
+#define TOK_TOTAL_COUNT 65
 
 typedef struct {
     TokenType type;

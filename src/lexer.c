@@ -41,6 +41,9 @@ static KeywordEntry keywords[] = {
     { "async", TOK_ASYNC },
     { "await", TOK_AWAIT },
     { "match", TOK_MATCH },
+    { "reactive", TOK_REACTIVE },    // Phase 4: MOSS-State
+    { "watch", TOK_WATCH },          // Phase 4: MOSS-State
+    { "transaction", TOK_TRANSACTION }, // Phase 4: MOSS-State
     { NULL, 0 }
 };
 

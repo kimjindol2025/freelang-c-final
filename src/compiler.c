@@ -636,6 +636,39 @@ static void compile_node(Compiler* c, fl_ast_node_t* node) {
             break;
         }
 
+        /* Phase 4: NODE_REACTIVE_DECL - reactive let/const/var */
+        case NODE_REACTIVE_DECL: {
+            // 1. Compile initialization value
+            if (node->data.reactive_decl.init) {
+                compile_node(c, node->data.reactive_decl.init);
+            } else {
+                chunk_emit_opcode(c->chunk, FL_OP_PUSH_NULL);
+            }
+
+            // 2. Wrap with reactive behavior
+            chunk_emit_opcode(c->chunk, FL_OP_MAKE_REACTIVE);
+
+            // 3. Handle decorator (@watch, @transaction)
+            if (strlen(node->data.reactive_decl.decorator) > 0) {
+                if (strcmp(node->data.reactive_decl.decorator, "watch") == 0) {
+                    chunk_emit_opcode(c->chunk, FL_OP_WATCH_FIELD);
+                    // Emit field name as string constant
+                    int field_const = chunk_emit_string(c->chunk, node->data.reactive_decl.name);
+                    chunk_emit_addr(c->chunk, (uint32_t)field_const);
+                } else if (strcmp(node->data.reactive_decl.decorator, "transaction") == 0) {
+                    // Transaction decorator: runtime will handle
+                    // (Can be applied at runtime instead of compile-time)
+                }
+            }
+
+            // 4. Register local variable
+            int local_idx = compiler_add_local(c, node->data.reactive_decl.name);
+            if (local_idx < 0) return;  /* Error: too many locals */
+            chunk_emit_opcode(c->chunk, FL_OP_STORE_LOCAL);
+            chunk_emit_addr(c->chunk, (uint32_t)local_idx);
+            break;
+        }
+
         case NODE_ASSIGN: {
             if (node->data.assign.target->type == NODE_IDENT) {
                 /* Simple variable assignment: x = val */

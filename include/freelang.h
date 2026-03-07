@@ -198,6 +198,13 @@ typedef enum {
     FL_OP_LOAD_UPVALUE,     /* Load captured variable from closure */
     FL_OP_STORE_UPVALUE,    /* Store captured variable in closure */
 
+    /* Reactive State Management (Phase 4) */
+    FL_OP_MAKE_REACTIVE,     /* [value] → [reactive_wrapper] */
+    FL_OP_WATCH_FIELD,       /* [field] → [] */
+    FL_OP_TRANSACTION_BEGIN, /* [] → [txn_id] */
+    FL_OP_TRANSACTION_COMMIT,/* [txn_id] → [success] */
+    FL_OP_TRANSACTION_ABORT, /* [txn_id] → [] */
+
     /* Other */
     FL_OP_HALT,
     FL_OP_NOP

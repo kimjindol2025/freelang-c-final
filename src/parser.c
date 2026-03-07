@@ -50,8 +50,24 @@ static ASTNode* parse_assignment(fl_parser_t *p);
 static ASTNode* parse_primary(fl_parser_t *p);
 
 static ASTNode* parse_var_decl(fl_parser_t *p) {
-    Token kind_tok = advance(p);
-    Token name_tok = advance(p);
+    // Phase 4: Check for decorator (@watch, @transaction)
+    char decorator[32] = "";
+    if (check(p, TOK_AT)) {
+        advance(p);  // consume @
+        if (check(p, TOK_IDENT)) {
+            Token dec_tok = advance(p);
+            strncpy(decorator, dec_tok.value, 31);
+        }
+    }
+
+    // Phase 4: Check for reactive keyword
+    int is_reactive = 0;
+    if (match(p, TOK_REACTIVE)) {
+        is_reactive = 1;
+    }
+
+    Token kind_tok = advance(p);        // "let", "const", "var"
+    Token name_tok = advance(p);        // variable name
     ASTNode *init = NULL;
 
     if (match(p, TOK_EQ)) {
@@ -59,11 +75,22 @@ static ASTNode* parse_var_decl(fl_parser_t *p) {
     }
     match(p, TOK_SEMICOLON);
 
-    ASTNode *node = ast_alloc(NODE_VAR_DECL);
+    // Choose node type based on is_reactive flag
+    ASTNode *node = ast_alloc(is_reactive ? NODE_REACTIVE_DECL : NODE_VAR_DECL);
     if (node) {
-        strncpy(node->data.var_decl.kind, kind_tok.value, 7);
-        strncpy(node->data.var_decl.name, name_tok.value, 255);
-        node->data.var_decl.init = init;
+        if (is_reactive) {
+            // NODE_REACTIVE_DECL
+            node->data.reactive_decl.is_reactive = 1;
+            strncpy(node->data.reactive_decl.kind, kind_tok.value, 7);
+            strncpy(node->data.reactive_decl.name, name_tok.value, 255);
+            strncpy(node->data.reactive_decl.decorator, decorator, 31);
+            node->data.reactive_decl.init = init;
+        } else {
+            // NODE_VAR_DECL
+            strncpy(node->data.var_decl.kind, kind_tok.value, 7);
+            strncpy(node->data.var_decl.name, name_tok.value, 255);
+            node->data.var_decl.init = init;
+        }
         node->line = kind_tok.line;
         node->col = kind_tok.col;
     }

@@ -63,6 +63,10 @@ typedef enum {
     NODE_CATCH_CLAUSE,
     NODE_FINALLY_CLAUSE,
 
+    /* Reactive State Management (Phase 4) */
+    NODE_REACTIVE_DECL,      /* reactive let/const/var state = ... */
+    NODE_DECORATOR_DECL,     /* @watch, @transaction */
+
     NODE_TYPE_MAX
 } NodeType;
 
@@ -414,6 +418,26 @@ typedef struct fl_ast_node {
             int is_nan;         /* 1 if NaN */
             int is_inf;         /* 1 if Infinity */
         } literal;
+
+        /* ================================================================
+           NODE_REACTIVE_DECL: reactive let/const/var x = init; (Phase 4)
+           ================================================================ */
+        struct {
+            char kind[8];              /* "let", "const", "var" */
+            char name[256];            /* variable name */
+            int is_reactive;           /* 1 if reactive */
+            struct fl_ast_node *init;  /* initialization value (nullable) */
+            char decorator[32];        /* "@watch", "@transaction", "" */
+            TypeAnnotation *type;      /* optional type hint */
+        } reactive_decl;
+
+        /* ================================================================
+           NODE_DECORATOR_DECL: @watch, @transaction (Phase 4)
+           ================================================================ */
+        struct {
+            char name[32];             /* "watch", "transaction", etc */
+            struct fl_ast_node *target; /* decorated declaration */
+        } decorator_decl;
 
     } data;
 
