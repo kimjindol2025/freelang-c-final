@@ -1,0 +1,196 @@
+/*
+ * Simple aarch64 ELF generator
+ * Minimal version - just the essential bytes
+ */
+
+fn main() {
+  let elf = []
+
+  /* ELF Header (64 bytes) */
+  push(elf, 0x7f) /* 0x7f */
+  push(elf, 0x45) /* E */
+  push(elf, 0x4c) /* L */
+  push(elf, 0x46) /* F */
+  push(elf, 0x02) /* Class: 64-bit */
+  push(elf, 0x01) /* Data: little-endian */
+  push(elf, 0x01) /* Version */
+  push(elf, 0x00) /* OS/ABI */
+  push(elf, 0x00) /* ABI version */
+  push(elf, 0x00) /* Padding */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x02) /* e_type: Executable */
+  push(elf, 0x00)
+  push(elf, 0xb7) /* e_machine: aarch64 */
+  push(elf, 0x00)
+  push(elf, 0x01) /* e_version */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00) /* e_entry: 0x400000 */
+  push(elf, 0x00)
+  push(elf, 0x40)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x40) /* e_phoff: 0x40 */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00) /* e_shoff: 0 */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00) /* e_flags */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x40) /* e_ehsize: 64 */
+  push(elf, 0x00)
+  push(elf, 0x38) /* e_phentsize: 56 */
+  push(elf, 0x00)
+  push(elf, 0x01) /* e_phnum: 1 */
+  push(elf, 0x00)
+  push(elf, 0x00) /* e_shentsize */
+  push(elf, 0x00)
+  push(elf, 0x00) /* e_shnum */
+  push(elf, 0x00)
+  push(elf, 0x00) /* e_shstrndx */
+  push(elf, 0x00)
+
+  /* Program Header (56 bytes) */
+  push(elf, 0x01) /* p_type: PT_LOAD */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x05) /* p_flags: PF_X|PF_R */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00) /* p_offset: 0x100 */
+  push(elf, 0x01)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00) /* p_vaddr: 0x400000 */
+  push(elf, 0x00)
+  push(elf, 0x40)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00) /* p_paddr: 0x400000 */
+  push(elf, 0x00)
+  push(elf, 0x40)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x2d) /* p_filesz: 45 (32 code + 13 data) */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x2d) /* p_memsz: 45 */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00) /* p_align: 0x1000 */
+  push(elf, 0x10)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x00)
+
+  /* Padding to 256 bytes */
+  let i = 0
+  while (i < 136) {
+    push(elf, 0x00)
+    i = i + 1
+  }
+
+  /* aarch64 code (32 bytes) */
+  push(elf, 0xa0) /* mov x0, #1 */
+  push(elf, 0x00)
+  push(elf, 0x80)
+  push(elf, 0xd2)
+  push(elf, 0x01) /* adr x1, msg */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0x10)
+  push(elf, 0xa2) /* mov x2, #13 */
+  push(elf, 0x01)
+  push(elf, 0x80)
+  push(elf, 0xd2)
+  push(elf, 0x08) /* mov x8, #64 */
+  push(elf, 0x08)
+  push(elf, 0x80)
+  push(elf, 0xd2)
+  push(elf, 0x01) /* svc #0 */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0xd4)
+  push(elf, 0x00) /* mov x0, #0 */
+  push(elf, 0x00)
+  push(elf, 0x80)
+  push(elf, 0xd2)
+  push(elf, 0x08) /* mov x8, #93 */
+  push(elf, 0xb9)
+  push(elf, 0x80)
+  push(elf, 0xd2)
+  push(elf, 0x01) /* svc #0 */
+  push(elf, 0x00)
+  push(elf, 0x00)
+  push(elf, 0xd4)
+
+  /* Data: "Hello, World!\n" (14 bytes) */
+  push(elf, 0x48) /* H */
+  push(elf, 0x65) /* e */
+  push(elf, 0x6c) /* l */
+  push(elf, 0x6c) /* l */
+  push(elf, 0x6f) /* o */
+  push(elf, 0x2c) /* , */
+  push(elf, 0x20) /* space */
+  push(elf, 0x57) /* W */
+  push(elf, 0x6f) /* o */
+  push(elf, 0x72) /* r */
+  push(elf, 0x6c) /* l */
+  push(elf, 0x64) /* d */
+  push(elf, 0x21) /* ! */
+  push(elf, 0x0a) /* \n */
+
+  /* Write to file */
+  println("Generating aarch64 ELF...")
+  write_bytes_file("hello_world", elf)
+  println("✓ ELF binary created: hello_world")
+}
+
+main()

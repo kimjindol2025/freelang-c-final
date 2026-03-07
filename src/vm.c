@@ -11,6 +11,7 @@
 #include "../include/compiler.h"
 #include "../include/runtime.h"
 #include "../include/closure.h"
+#include "../include/stdlib_fl.h"
 
 /* ============================================================
    VM Global State
@@ -300,6 +301,24 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
     } else if (strcmp(name, "print") == 0) {
         fl_value_t ret = builtin_print(vm, argc);
         fl_vm_push(vm, ret);
+    } else if (strcmp(name, "write_bytes_file") == 0) {
+        /* write_bytes_file(filename, byte_array) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_write_bytes_file(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "read_file") == 0) {
+        /* read_file(filename) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_read_file(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;
@@ -1124,7 +1143,7 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
             case FL_OP_CATCH_END: {
                 /* Catch block ended - clear exception state */
                 vm->exception_active = false;
-                vm->exception_handler = NULL;
+                vm->exception_handler = 0;
                 break;
             }
 

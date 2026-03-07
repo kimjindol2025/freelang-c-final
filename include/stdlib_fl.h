@@ -8,10 +8,12 @@
 
 #include "freelang.h"
 
-/* I/O Functions (3) */
+/* I/O Functions (5) */
 fl_value_t fl_print(fl_value_t* args, size_t argc);
 fl_value_t fl_println(fl_value_t* args, size_t argc);
 fl_value_t fl_input(fl_value_t* args, size_t argc);
+fl_value_t fl_write_bytes_file(fl_value_t* args, size_t argc);
+fl_value_t fl_read_file(fl_value_t* args, size_t argc);
 
 /* String Functions (16) */
 fl_value_t fl_string_length(fl_value_t* args, size_t argc);

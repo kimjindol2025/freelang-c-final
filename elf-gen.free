@@ -1,0 +1,336 @@
+/*
+ * aarch64 ELF 생성기 (Hello World)
+ * FreeLang으로 작성된 자체호스팅 컴파일러
+ *
+ * ELF 바이너리 구조:
+ * - ELF 헤더 (64 바이트)
+ * - 프로그램 헤더 (56 바이트)
+ * - 코드 섹션 (약 32 바이트 기계어)
+ * - 데이터 섹션 ("Hello, World!\n")
+ */
+
+fn make_elf_header() {
+  /* ELF 헤더 64바이트 생성 */
+  let header = []
+
+  /* ELF magic: 0x7f 0x45 0x4c 0x46 */
+  push(header, 0x7f)
+  push(header, 0x45)
+  push(header, 0x4c)
+  push(header, 0x46)
+
+  /* Class: 64-bit (0x02) */
+  push(header, 0x02)
+
+  /* Data: Little-endian (0x01) */
+  push(header, 0x01)
+
+  /* Version: 1 */
+  push(header, 0x01)
+
+  /* OS/ABI: System V (0x00) */
+  push(header, 0x00)
+
+  /* ABI version */
+  push(header, 0x00)
+
+  /* Padding (7 bytes) */
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_type: Executable (0x0002) - Little-endian */
+  push(header, 0x02)
+  push(header, 0x00)
+
+  /* e_machine: AArch64 (0x00b7) - Little-endian */
+  push(header, 0xb7)
+  push(header, 0x00)
+
+  /* e_version: 1 */
+  push(header, 0x01)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_entry: 0x400000 (entry point) - Little-endian 64-bit */
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x40)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_phoff: 0x40 (program header offset) */
+  push(header, 0x40)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_shoff: 0x00 (section header offset - none) */
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_flags: 0 */
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_ehsize: 64 (ELF header size) */
+  push(header, 0x40)
+  push(header, 0x00)
+
+  /* e_phentsize: 56 (program header entry size) */
+  push(header, 0x38)
+  push(header, 0x00)
+
+  /* e_phnum: 1 (number of program headers) */
+  push(header, 0x01)
+  push(header, 0x00)
+
+  /* e_shentsize: 0 (no section headers) */
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_shnum: 0 */
+  push(header, 0x00)
+  push(header, 0x00)
+
+  /* e_shstrndx: 0 */
+  push(header, 0x00)
+  push(header, 0x00)
+
+  return header
+}
+
+fn make_program_header(code_offset, code_size, data_offset, data_size) {
+  let pheader = []
+
+  /* p_type: PT_LOAD (1) */
+  push(pheader, 0x01)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  /* p_flags: PF_X | PF_R (5) */
+  push(pheader, 0x05)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  /* p_offset: 0x100 (data starts at offset 256) */
+  push(pheader, 0x00)
+  push(pheader, 0x01)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  /* p_vaddr: 0x400000 */
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x40)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  /* p_paddr: 0x400000 */
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x40)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  /* p_filesz: code_size + data_size */
+  let total_size = code_size + data_size
+  push(pheader, total_size)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  /* p_memsz: same as filesz */
+  push(pheader, total_size)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  /* p_align: 0x1000 */
+  push(pheader, 0x00)
+  push(pheader, 0x10)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+  push(pheader, 0x00)
+
+  return pheader
+}
+
+fn make_aarch64_code() {
+  /* aarch64 Hello World syscall code */
+  let code = []
+
+  /* mov x0, #1 (fd=stdout) */
+  push(code, 0xa0)
+  push(code, 0x00)
+  push(code, 0x80)
+  push(code, 0xd2)
+
+  /* adr x1, msg (address of message) */
+  push(code, 0x01)
+  push(code, 0x00)
+  push(code, 0x00)
+  push(code, 0x10)
+
+  /* mov x2, #13 (message length) */
+  push(code, 0xa2)
+  push(code, 0x01)
+  push(code, 0x80)
+  push(code, 0xd2)
+
+  /* mov x8, #64 (sys_write) */
+  push(code, 0x08)
+  push(code, 0x08)
+  push(code, 0x80)
+  push(code, 0xd2)
+
+  /* svc #0 (syscall) */
+  push(code, 0x01)
+  push(code, 0x00)
+  push(code, 0x00)
+  push(code, 0xd4)
+
+  /* mov x0, #0 (exit code) */
+  push(code, 0x00)
+  push(code, 0x00)
+  push(code, 0x80)
+  push(code, 0xd2)
+
+  /* mov x8, #93 (sys_exit) */
+  push(code, 0x08)
+  push(code, 0xb9)
+  push(code, 0x80)
+  push(code, 0xd2)
+
+  /* svc #0 (syscall) */
+  push(code, 0x01)
+  push(code, 0x00)
+  push(code, 0x00)
+  push(code, 0xd4)
+
+  return code
+}
+
+fn make_data() {
+  /* "Hello, World!\n" */
+  let data = []
+  push(data, 0x48) /* H */
+  push(data, 0x65) /* e */
+  push(data, 0x6c) /* l */
+  push(data, 0x6c) /* l */
+  push(data, 0x6f) /* o */
+  push(data, 0x2c) /* , */
+  push(data, 0x20) /* (space) */
+  push(data, 0x57) /* W */
+  push(data, 0x6f) /* o */
+  push(data, 0x72) /* r */
+  push(data, 0x6c) /* l */
+  push(data, 0x64) /* d */
+  push(data, 0x21) /* ! */
+  push(data, 0x0a) /* \n */
+
+  return data
+}
+
+fn combine_arrays(a1, a2, a3) {
+  let result = []
+  let i = 0
+
+  /* Copy a1 */
+  while (i < len(a1)) {
+    push(result, a1[i])
+    i = i + 1
+  }
+
+  /* Copy a2 */
+  i = 0
+  while (i < len(a2)) {
+    push(result, a2[i])
+    i = i + 1
+  }
+
+  /* Copy a3 */
+  i = 0
+  while (i < len(a3)) {
+    push(result, a3[i])
+    i = i + 1
+  }
+
+  return result
+}
+
+fn main() {
+  /* Generate ELF components */
+  let header = make_elf_header()
+  println("✓ ELF header created")
+
+  let code = make_aarch64_code()
+  println("✓ aarch64 code created")
+
+  let data = make_data()
+  println("✓ Data section created")
+
+  let pheader = make_program_header(256, len(code), 256 + len(code), len(data))
+  println("✓ Program header created")
+
+  /* Combine all sections */
+  let combined = combine_arrays(header, pheader, code)
+
+  /* Pad to 256 bytes (0x100) with zeros */
+  while (len(combined) < 256) {
+    push(combined, 0x00)
+  }
+
+  /* Add data section */
+  let final_elf = combine_arrays(combined, data, [])
+
+  /* Write to file */
+  println("Writing ELF binary...")
+  write_bytes_file("hello_world", final_elf)
+  println("✓ ELF binary written to: hello_world")
+}
+
+main()

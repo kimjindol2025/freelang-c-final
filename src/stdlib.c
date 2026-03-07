@@ -1735,3 +1735,108 @@ void fl_value_free(fl_value_t value) {
     }
     /* Other types handled by GC */
 }
+
+/* File I/O Functions */
+
+/**
+ * write_bytes_file(filename: string, bytes: array[int]) -> null
+ * Writes binary data to a file. Each element in the array should be 0-255.
+ * Used for creating binary files like ELF executables.
+ */
+fl_value_t fl_write_bytes_file(fl_value_t* args, size_t argc) {
+    if (argc < 2) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: Expected 2 arguments (filename, bytes array)\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_STRING) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: First argument must be a string (filename)\n");
+        return fl_new_null();
+    }
+
+    if (args[1].type != FL_TYPE_ARRAY) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: Second argument must be an array of bytes\n");
+        return fl_new_null();
+    }
+
+    const char* filename = args[0].data.string_val;
+    fl_array_t* byte_array = args[1].data.array_val;
+
+    FILE* f = fopen(filename, "wb");
+    if (!f) {
+        fprintf(stderr, "[STDLIB] write_bytes_file: Failed to open file '%s' for writing\n", filename);
+        return fl_new_null();
+    }
+
+    for (size_t i = 0; i < byte_array->size; i++) {
+        if (byte_array->elements[i].type != FL_TYPE_INT) {
+            fprintf(stderr, "[STDLIB] write_bytes_file: Array element %zu is not an integer\n", i);
+            fclose(f);
+            return fl_new_null();
+        }
+        uint8_t byte = (uint8_t)(byte_array->elements[i].data.int_val & 0xFF);
+        if (fwrite(&byte, 1, 1, f) != 1) {
+            fprintf(stderr, "[STDLIB] write_bytes_file: Write error at byte %zu\n", i);
+            fclose(f);
+            return fl_new_null();
+        }
+    }
+
+    fclose(f);
+    printf("[STDLIB] write_bytes_file: Wrote %zu bytes to '%s'\n", byte_array->size, filename);
+    return fl_new_null();
+}
+
+/**
+ * read_file(filename: string) -> string
+ * Reads a text file and returns its contents as a string.
+ */
+fl_value_t fl_read_file(fl_value_t* args, size_t argc) {
+    if (argc < 1) {
+        fprintf(stderr, "[STDLIB] read_file: Expected 1 argument (filename)\n");
+        return fl_new_null();
+    }
+
+    if (args[0].type != FL_TYPE_STRING) {
+        fprintf(stderr, "[STDLIB] read_file: Argument must be a string (filename)\n");
+        return fl_new_null();
+    }
+
+    const char* filename = args[0].data.string_val;
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "[STDLIB] read_file: Failed to open file '%s'\n", filename);
+        return fl_new_null();
+    }
+
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (file_size < 0) {
+        fprintf(stderr, "[STDLIB] read_file: Failed to get file size\n");
+        fclose(f);
+        return fl_new_null();
+    }
+
+    char* buffer = malloc(file_size + 1);
+    if (!buffer) {
+        fprintf(stderr, "[STDLIB] read_file: Memory allocation failed\n");
+        fclose(f);
+        return fl_new_null();
+    }
+
+    size_t bytes_read = fread(buffer, 1, file_size, f);
+    fclose(f);
+
+    if (bytes_read != (size_t)file_size) {
+        fprintf(stderr, "[STDLIB] read_file: Read %zu bytes, expected %ld\n", bytes_read, file_size);
+        free(buffer);
+        return fl_new_null();
+    }
+
+    buffer[file_size] = '\0';
+    fl_value_t result = fl_new_string(buffer);
+    free(buffer);
+    return result;
+}

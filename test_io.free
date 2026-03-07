@@ -1,0 +1,11 @@
+fn main() {
+  let bytes = [0x48, 0x65, 0x6c, 0x6c, 0x6f] /* "Hello" */
+  write_bytes_file("test_output.bin", bytes)
+  println("✓ write_bytes_file() worked")
+
+  let content = read_file("test_output.bin")
+  println("✓ read_file() returned:")
+  println(content)
+}
+
+main()
