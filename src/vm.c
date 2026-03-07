@@ -1007,18 +1007,27 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
             case FL_OP_ARRAY_GET: {
                 fl_value_t idx = fl_vm_pop(vm);
                 fl_value_t arr_val = fl_vm_pop(vm);
+                fl_value_t result;
+                result.type = FL_TYPE_NULL;
 
                 if (arr_val.type == FL_TYPE_ARRAY && idx.type == FL_TYPE_INT) {
                     fl_array_t *arr = arr_val.data.array_val;
                     size_t i = (size_t)idx.data.int_val;
                     if (i < arr->size) {
-                        fl_vm_push(vm, arr->elements[i]);
-                    } else {
-                        fl_value_t null_val;
-                        null_val.type = FL_TYPE_NULL;
-                        fl_vm_push(vm, null_val);
+                        result = arr->elements[i];
+                    }
+                } else if (arr_val.type == FL_TYPE_STRING && idx.type == FL_TYPE_INT) {
+                    /* String indexing: return single character as string */
+                    const char *str = arr_val.data.string_val;
+                    size_t i = (size_t)idx.data.int_val;
+                    if (i < strlen(str)) {
+                        char ch[2] = {str[i], '\0'};
+                        result.type = FL_TYPE_STRING;
+                        result.data.string_val = (char*)malloc(2);
+                        strcpy(result.data.string_val, ch);
                     }
                 }
+                fl_vm_push(vm, result);
                 break;
             }
 

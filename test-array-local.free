@@ -1,0 +1,12 @@
+fn main() {
+  let myarr = []
+  println("Created array")
+  push(myarr, "hello")
+  println("Pushed hello")
+  push(myarr, "world")
+  println("Pushed world")
+  println(len(myarr))
+  println(myarr[0])
+  println(myarr[1])
+}
+main()
