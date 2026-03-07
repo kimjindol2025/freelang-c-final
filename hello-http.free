@@ -1,0 +1,29 @@
+/*
+ * FreeLang HTTP Server
+ * 최소한의 HTTP/1.1 서버 구현
+ */
+
+fn main() {
+  println("================================")
+  println("FreeLang HTTP Server")
+  println("================================")
+
+  /* HTTP Response 구성 */
+  let status = "HTTP/1.1 200 OK"
+  let content_type = "Content-Type: text/plain"
+  let content_length = "Content-Length: 29"
+  let body = "Hello from FreeLang Server!\n"
+
+  /* 응답 출력 */
+  println(status)
+  println(content_type)
+  println(content_length)
+  println("")  /* 헤더와 본문 사이 빈 줄 */
+  println(body)
+
+  println("================================")
+  println("✅ HTTP Response sent")
+  println("================================")
+}
+
+main()
