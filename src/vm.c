@@ -337,6 +337,60 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
         fl_value_t ret = fl_push(args, argc);
         fl_vm_push(vm, ret);
         free(args);
+    } else if (strcmp(name, "bytes_new") == 0) {
+        /* bytes_new(capacity) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_new(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_len") == 0) {
+        /* bytes_len(bytes) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_len(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_set") == 0) {
+        /* bytes_set(bytes, idx, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_set(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_get") == 0) {
+        /* bytes_get(bytes, idx) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_get(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_write_u32") == 0) {
+        /* bytes_write_u32(bytes, offset, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_write_u32(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "bytes_write_u64") == 0) {
+        /* bytes_write_u64(bytes, offset, value) */
+        fl_value_t* args = malloc(argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_bytes_write_u64(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;

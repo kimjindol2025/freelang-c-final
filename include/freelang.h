@@ -35,7 +35,8 @@ typedef enum {
     FL_TYPE_ARRAY,
     FL_TYPE_OBJECT,
     FL_TYPE_FUNCTION,
-    FL_TYPE_CLOSURE,       /* NEW: Closure with captured environment */
+    FL_TYPE_CLOSURE,       /* Closure with captured environment */
+    FL_TYPE_BYTES,         /* NEW: Raw byte array for binary data */
     FL_TYPE_ERROR
 } fl_type_t;
 
@@ -50,7 +51,8 @@ typedef struct fl_value {
         struct fl_array* array_val;
         struct fl_object* object_val;
         struct fl_function* func_val;
-        struct fl_closure* closure_val;    /* NEW: Closure with captured environment */
+        struct fl_closure* closure_val;    /* Closure with captured environment */
+        struct fl_bytes* bytes_val;        /* NEW: Raw byte array */
         struct fl_error* error_val;
     } data;
 } fl_value_t;
@@ -61,6 +63,13 @@ typedef struct fl_array {
     size_t size;
     size_t capacity;
 } fl_array_t;
+
+/* Bytes structure - raw binary data */
+typedef struct fl_bytes {
+    uint8_t* data;
+    size_t size;
+    size_t capacity;
+} fl_bytes_t;
 
 /* Object structure (key-value map) */
 typedef struct fl_object {

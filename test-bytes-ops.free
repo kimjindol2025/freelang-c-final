@@ -1,0 +1,11 @@
+fn main() {
+  println("Creating bytes...")
+  let b = bytes_new(256)
+  println("Setting byte at 0 to 127...")
+  bytes_set(b, 0, 127)
+  println("Getting byte at 0...")
+  let val = bytes_get(b, 0)
+  println("Value:")
+  println(val)
+}
+main()

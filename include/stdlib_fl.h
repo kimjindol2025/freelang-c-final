@@ -88,6 +88,14 @@ fl_value_t fl_object_assign(fl_value_t* args, size_t argc);
 fl_value_t fl_json_stringify(fl_value_t* args, size_t argc);
 fl_value_t fl_json_parse(fl_value_t* args, size_t argc);
 
+/* Bytes Functions (5) - Phase 3 */
+fl_value_t fl_bytes_new(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_len(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_set(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_get(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_write_u32(fl_value_t* args, size_t argc);
+fl_value_t fl_bytes_write_u64(fl_value_t* args, size_t argc);
+
 /* Control Flow (2) */
 fl_value_t fl_assert(fl_value_t* args, size_t argc);
 fl_value_t fl_panic(fl_value_t* args, size_t argc);

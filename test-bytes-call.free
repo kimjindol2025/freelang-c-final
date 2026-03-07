@@ -1,0 +1,6 @@
+fn main() {
+  println("Before bytes_new")
+  bytes_new(256)
+  println("After bytes_new")
+}
+main()
