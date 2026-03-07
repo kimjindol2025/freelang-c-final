@@ -12,6 +12,7 @@
 #include "../include/runtime.h"
 #include "../include/closure.h"
 #include "../include/stdlib_fl.h"
+#include "../include/http_secure.h"
 
 /* ============================================================
    VM Global State
@@ -389,6 +390,47 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
             args[argc - 1 - i] = fl_vm_pop(vm);
         }
         fl_value_t ret = fl_bytes_write_u64(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    /* ── HTTP Secure-Pipeline (helmet 대체) ── */
+    } else if (strcmp(name, "http_secure_headers") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_http_secure_headers(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "http_csp") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_http_csp(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "http_hsts") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_http_hsts(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "http_response") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_http_response(args, argc);
+        fl_vm_push(vm, ret);
+        free(args);
+    } else if (strcmp(name, "http_response_json") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) {
+            args[argc - 1 - i] = fl_vm_pop(vm);
+        }
+        fl_value_t ret = fl_http_response_json(args, argc);
         fl_vm_push(vm, ret);
         free(args);
     } else {

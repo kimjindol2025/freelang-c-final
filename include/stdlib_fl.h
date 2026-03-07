@@ -100,6 +100,31 @@ fl_value_t fl_bytes_write_u64(fl_value_t* args, size_t argc);
 fl_value_t fl_assert(fl_value_t* args, size_t argc);
 fl_value_t fl_panic(fl_value_t* args, size_t argc);
 
+/* Crypto Functions (Phase 5 - bcrypt 대체) */
+/* SHA-256: sha256(bytes|string) -> bytes[32] */
+fl_value_t fl_sha256(fl_value_t* args, size_t argc);
+/* HMAC-SHA256: hmac_sha256(key_bytes, data_bytes) -> bytes[32] */
+fl_value_t fl_hmac_sha256(fl_value_t* args, size_t argc);
+/* PBKDF2: pbkdf2(password_bytes, salt_bytes, iterations, dklen) -> bytes */
+fl_value_t fl_pbkdf2_hmac_sha256(fl_value_t* args, size_t argc);
+/* Secure random: crypto_random(n) -> bytes[n] (CSPRNG via /dev/urandom) */
+fl_value_t fl_crypto_random(fl_value_t* args, size_t argc);
+/* bytes -> hex string: bytes_to_hex(bytes) -> string */
+fl_value_t fl_bytes_to_hex(fl_value_t* args, size_t argc);
+/* Timing-safe compare: crypto_compare(a_bytes, b_bytes) -> bool */
+fl_value_t fl_crypto_compare(fl_value_t* args, size_t argc);
+/* u32 bit rotation: u32_rotr(val, n) -> u32 */
+fl_value_t fl_u32_rotr(fl_value_t* args, size_t argc);
+/* u32 add with overflow (mod 2^32): u32_add(a, b) -> u32 */
+fl_value_t fl_u32_add(fl_value_t* args, size_t argc);
+
+/* HTTP Secure-Pipeline (5) - helmet 대체 네이티브 구현 */
+fl_value_t fl_http_secure_headers(fl_value_t* args, size_t argc);
+fl_value_t fl_http_csp(fl_value_t* args, size_t argc);
+fl_value_t fl_http_hsts(fl_value_t* args, size_t argc);
+fl_value_t fl_http_response(fl_value_t* args, size_t argc);
+fl_value_t fl_http_response_json(fl_value_t* args, size_t argc);
+
 /* Register all stdlib functions */
 void fl_stdlib_register(fl_runtime_t* runtime);
 
