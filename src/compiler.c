@@ -10,6 +10,37 @@
 #include "../include/compiler.h"
 #include "../include/ast.h"
 #include "../include/freelang.h"
+#include "../include/logger.h"
+
+/* ============================================================
+   @log_level 어노테이션 처리
+   소스 파일 상단에 "@log_level(debug|info|warn|error|off)" 선언 시
+   컴파일러가 해당 레벨 이하의 log_*() 호출을 NOP으로 대체
+   ============================================================ */
+
+static void compiler_apply_log_level(const char* level_str) {
+    if (!level_str) return;
+    if      (strcmp(level_str, "debug") == 0) fl_compile_log_level = FL_LOG_DEBUG;
+    else if (strcmp(level_str, "info")  == 0) fl_compile_log_level = FL_LOG_INFO;
+    else if (strcmp(level_str, "warn")  == 0) fl_compile_log_level = FL_LOG_WARN;
+    else if (strcmp(level_str, "error") == 0) fl_compile_log_level = FL_LOG_ERROR;
+    else if (strcmp(level_str, "off")   == 0) fl_compile_log_level = FL_LOG_OFF;
+    fprintf(stderr, "[Compiler] @log_level(\"%s\") → 컴파일 임계값 설정\n", level_str);
+}
+
+/* log_*() 호출이 컴파일 레벨에 의해 제거되어야 하는지 확인 */
+static bool compiler_log_call_should_drop(const char* func_name) {
+    if (!func_name) return false;
+    fl_log_level_t call_level = FL_LOG_OFF;
+    if      (strcmp(func_name, "log_debug") == 0) call_level = FL_LOG_DEBUG;
+    else if (strcmp(func_name, "log_info")  == 0) call_level = FL_LOG_INFO;
+    else if (strcmp(func_name, "log_warn")  == 0) call_level = FL_LOG_WARN;
+    else if (strcmp(func_name, "log_error") == 0) call_level = FL_LOG_ERROR;
+    else return false;  /* 로거 함수가 아님 */
+
+    /* call_level < compile_level 이면 제거 */
+    return (int)call_level < (int)fl_compile_log_level;
+}
 
 /* ============================================================
    Chunk Management
@@ -610,6 +641,19 @@ static void compile_node(Compiler* c, fl_ast_node_t* node) {
         }
 
         case NODE_CALL: {
+            /* @log_level 컴파일 시 필터링:
+             * log_debug/info/warn/error 호출이 compile_log_level 미만이면
+             * 인자 컴파일 없이 NOP 1개만 emit → 런타임 오버헤드 0 */
+            const char* callee_name = NULL;
+            if (node->data.call.callee &&
+                node->data.call.callee->type == NODE_IDENT) {
+                callee_name = node->data.call.callee->data.ident.name;
+            }
+            if (callee_name && compiler_log_call_should_drop(callee_name)) {
+                chunk_emit_opcode(c->chunk, FL_OP_NOP);
+                break;
+            }
+
             /* Compile arguments first (standard calling convention) */
             for (int i = 0; i < node->data.call.arg_count; i++) {
                 compile_node(c, node->data.call.arguments[i]);

@@ -1,310 +1,320 @@
-# FreeLang C Runtime v1.1 🎉
+# FreeLang C Runtime v2.0
 
-**완전한 기능의 프로그래밍 언어 인터프리터** + **MOSS-State 컴파일러 통합** ✅
+**외부 의존성 0개** — 완전한 프로그래밍 언어 런타임 + 보안/암호화/이미지/프로세스 관리 내장
 
-동적 타입, 일급 함수, 클로저, 예외 처리를 지원하는 Stack-based 인터프리터.
-**Phase 4**: MOSS-State Zero-Copy 상태 관리 컴파일러 통합 완료!
+동적 타입, 일급 함수, 클로저, 예외 처리, Reactive 상태 관리를 지원하는 Stack-based 인터프리터.
+npm, pip, gem 없이 언어 자체가 인프라입니다.
 
-완전 독립 실행파일 (130KB, 의존성 0개)
-
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Complete](https://img.shields.io/badge/status-100%25%20COMPLETE-success)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Build](https://img.shields.io/badge/build-passing-brightgreen)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Binary](https://img.shields.io/badge/binary-188KB-orange)
+![Deps](https://img.shields.io/badge/dependencies-0-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## 🎯 주요 특징
+---
 
-### 핵심 언어 기능
-- ✅ **완전한 파이프라인**: Lexer → Parser → Compiler → Stack-based VM
-- ✅ **함수형 프로그래밍**: 일급 함수, 람다, 고차함수 (map/filter/reduce)
-- ✅ **예외 처리**: try-catch-finally 완벽 지원
-- ✅ **메모리 안전성**: Mark-and-Sweep GC + Deep Copy
-- ✅ **클로저**: 변수 캡처 및 렉시컬 스코프
-- ✅ **의존성 0개**: 완전 독립 실행파일 (130KB)
+## 핵심 특징
 
-### 🆕 Phase 4: MOSS-State 컴파일러 통합
-- ✅ **Reactive 키워드**: `reactive let/const/var` 지원
-- ✅ **@watch 데코레이터**: 자동 옵저버 등록
-- ✅ **@transaction 데코레이터**: MVCC 트랜잭션 래핑
-- ✅ **컴파일러 패치**: 6개 파일 수정, 완벽 통합
-- ✅ **Zero-Copy 메모리**: SharedArrayBuffer 기반 상태 관리
-- ✅ **고성능**: 읽기 0.169μs, 쓰기 0.865μs, 옵저버 0.36ms
+| 항목 | 내용 |
+|------|------|
+| **바이너리 크기** | 188KB |
+| **외부 의존성** | 0개 |
+| **총 코드** | 16,000+ 줄 |
+| **Opcode** | 50개 |
+| **표준 라이브러리** | 130+ 함수 |
+| **대체한 npm 패키지** | helmet, bcrypt, sharp, pm2, cluster |
 
-## 📁 프로젝트 구조
+---
 
-```
-freelang-c/
-├── include/                    # 헤더 파일
-│   ├── freelang.h             # 메인 헤더 (타입 정의) [Phase 4: opcode 5개 추가]
-│   ├── ast.h                  # AST 정의 [Phase 4: NODE_REACTIVE_DECL 추가]
-│   ├── token.h                # 토큰 정의 [Phase 4: 3개 키워드 추가]
-│   ├── vm.h                   # VM 인터페이스
-│   ├── closure.h              # 클로저 API
-│   ├── parser.h, lexer.h, compiler.h, etc.
-│
-├── src/                        # 소스 코드
-│   ├── lexer.c                # 토크나이저 [Phase 4: "reactive", "watch", "transaction" 추가]
-│   ├── parser.c               # 파서 [Phase 4: parse_var_decl() 확장, @decorator 처리]
-│   ├── compiler.c             # 컴파일러 [Phase 4: NODE_REACTIVE_DECL 케이스 추가]
-│   ├── vm.c                   # 가상머신 (45개 opcode)
-│   ├── runtime.c              # 런타임
-│   ├── ast.c                  # AST 관리
-│   ├── gc.c                   # GC
-│   ├── typechecker.c          # 타입 검사
-│   ├── stdlib.c               # 표준 라이브러리 (100+ 함수)
-│   ├── closure.c              # 클로저
-│   ├── error.c                # 에러 처리
-│   └── main.c                 # 진입점
-│
-├── examples/                   # 예제 파일
-│   ├── fibonacci.fl           # 재귀 예제
-│   ├── lambda_test.fl         # 람다 & 고차함수
-│   ├── arrays.fl              # 배열 메서드
-│   ├── exception_test.fl      # 예외 처리
-│   ├── closure.fl             # 클로저
-│   └── ...
-│
-├── Makefile                    # 빌드 스크립트
-├── bin/fl                      # 실행파일 (130KB)
-└── README.md                   # 이 파일
-```
-
-## 🚀 빠른 시작
-
-### 빌드
+## 빠른 시작
 
 ```bash
-# 저장소 클론
-git clone https://gogs.dclub.kr/kim/freelang-c.git
+git clone https://gogs.dclub.kr/kim/freelang-c-final.git
 cd freelang-c
-
-# 빌드
 make clean && make
+
+./bin/fl examples/secure-server.free    # HTTP 보안 서버
+./bin/fl examples/fibonacci.fl          # 재귀
+./bin/fl examples/closure.fl            # 클로저
 ```
 
-### 실행
+---
 
-```bash
-# Fibonacci 계산
-./bin/fl run examples/fibonacci.fl
+## Phase별 구현 현황
 
-# 람다 함수 & 고차함수
-./bin/fl run examples/lambda_test.fl
+### Phase 1-3: 언어 코어
+- 완전한 파이프라인: Lexer → Parser → Compiler → Stack-based VM
+- 함수, 재귀, 람다, 고차함수 (map/filter/reduce)
+- 예외 처리: try/catch/finally
+- Mark-and-Sweep GC + Deep Copy 메모리 안전성
 
-# 예외 처리
-./bin/fl run examples/exception_test.fl
+### Phase 4: MOSS-State Reactive
+MOSS-State Zero-Copy 상태 관리 컴파일러 통합.
 
-# 배열 & 메서드
-./bin/fl run examples/arrays.fl
-```
+```freelang
+reactive let store = { count: 0, messages: [] };
 
-### 요구사항
-
-- GCC 9+ 또는 Clang 10+
-- GNU Make 4.0+
-- Linux / macOS / BSD
-
-### 빌드 결과
-
-- **실행파일**: `bin/fl` (130KB)
-- **의존성**: 0개 (완전 독립)
-
-## 📚 언어 사용 가이드
-
-### 기본 변수 & 연산
-
-```javascript
-let x = 42;
-let y = 3.14;
-println(x + y);    // 45.14
-println(x * 2);    // 84
-```
-
-### 함수
-
-```javascript
-fn add(a, b) {
-    return a + b;
+@watch
+fn onStateChange() {
+    print("State changed!");
 }
 
-println(add(5, 3));  // 8
+@transaction
+fn addMessage(text) {
+    store.messages.push(text);
+    return true;
+}
+```
+
+| 항목 | 목표 | 달성 |
+|------|------|------|
+| 읽기 | < 1μs | **0.169μs** |
+| 쓰기 | < 100μs | **0.865μs** |
+| 옵저버 | < 10ms | **0.36ms** |
+| 동시 TX | 1000+ | **1000/1000** |
+
+### Phase 5: Crypto — bcrypt 대체
+
+외부 bcrypt/openssl 없이 FreeLang 런타임에 내장된 암호화 엔진.
+
+```freelang
+let data = "hello world"
+let hash = sha256(data)               // SHA-256 (FIPS 180-4)
+let hex  = bytes_to_hex(hash)         // "b94d27b9..."
+
+let key  = crypto_random(32)          // CSPRNG (/dev/urandom)
+let mac  = hmac_sha256(key, data)     // HMAC-SHA256 (RFC 2104)
+
+let pw   = "my_password"
+let salt = crypto_random(16)
+let dk   = pbkdf2(pw, salt, 10000, 32) // PBKDF2-HMAC-SHA256 (RFC 8018)
+```
+
+| 함수 | 대체 |
+|------|------|
+| `sha256()` | crypto.createHash('sha256') |
+| `hmac_sha256()` | crypto.createHmac('sha256') |
+| `pbkdf2()` | bcrypt / argon2 |
+| `crypto_random()` | crypto.randomBytes() |
+| `crypto_compare()` | crypto.timingSafeEqual() |
+
+### Phase 6: HTTP Secure-Pipeline — helmet 대체
+
+외부 helmet npm 패키지 없이 모든 HTTP 응답에 보안 헤더 자동 주입.
+
+```freelang
+fn main() {
+    let body = "FreeLang Secure Server"
+
+    // 별도의 helmet() 호출 없이 7가지 보안 헤더 자동 삽입
+    let resp = http_response(200, body)
+    println(resp)
+
+    // JSON API 응답
+    let json = "{\"status\":\"ok\"}"
+    let api_resp = http_response_json(200, json)
+
+    // 커스텀 CSP 정책
+    let csp = http_csp("'self'", "'self' https://cdn.example.com")
+
+    // HSTS 설정
+    let hsts = http_hsts(31536000)
+}
+
+main()
+```
+
+자동 삽입되는 보안 헤더 (`http_response()` 호출 시):
+```
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-XSS-Protection: 1; mode=block
+Content-Security-Policy: default-src 'self'
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+```
+
+| 함수 | 대체 |
+|------|------|
+| `http_secure_headers()` | helmet() |
+| `http_csp(...)` | helmet.contentSecurityPolicy() |
+| `http_hsts(max_age)` | helmet.hsts() |
+| `http_response(status, body)` | res.send() + helmet 미들웨어 |
+| `http_response_json(status, body)` | res.json() + helmet 미들웨어 |
+
+### Phase 7: Vector-Vision — sharp 대체
+
+외부 sharp/imagemagick 없이 이미지 처리 내장.
+
+```freelang
+let img = vision_load("photo.raw", 640, 480, 3)
+let w   = vision_width(img)
+let h   = vision_height(img)
+let gray = vision_grayscale(img)
+let small = vision_resize(img, 320, 240)
+let blurred = vision_blur(img, 2)
+vision_save(small, "thumbnail.raw")
+```
+
+| 함수 | 대체 |
+|------|------|
+| `vision_load()` | sharp() |
+| `vision_resize()` | sharp().resize() |
+| `vision_grayscale()` | sharp().grayscale() |
+| `vision_blur()` | sharp().blur() |
+| `vision_pixel_get/set()` | Canvas API |
+
+### Phase 8: Phoenix-Spawn — pm2/cluster 대체
+
+외부 pm2, cluster 없이 프로세스 관리 내장.
+
+```freelang
+let pid = process_spawn("worker", "worker.free", true)
+let procs = process_list()
+process_restart("worker")
+process_kill(pid)
+
+let metrics = system_metrics()
+let workers = cluster_workers(4)
+```
+
+| 함수 | 대체 |
+|------|------|
+| `process_spawn()` | pm2 start |
+| `process_list()` | pm2 list |
+| `process_restart()` | pm2 restart |
+| `cluster_workers()` | cluster.fork() |
+| `system_metrics()` | os 모듈 |
+
+---
+
+## 언어 문법
+
+### 기본
+
+```freelang
+let x = 42
+let y = 3.14
+println(x + y)
+
+fn add(a, b) {
+    return a + b
+}
+println(add(5, 3))
 ```
 
 ### 재귀
 
-```javascript
+```freelang
 fn fibonacci(n) {
     if (n <= 1) return n;
     return fibonacci(n-1) + fibonacci(n-2);
 }
-
-println(fibonacci(10));  // 55
+println(fibonacci(10))  // 55
 ```
 
 ### 람다 & 고차함수
 
-```javascript
-let double = fn(x) { return x * 2; };
-let arr = [1, 2, 3, 4, 5];
-
-// map: 각 요소에 함수 적용
-let doubled = map(arr, double);
-println(doubled);  // [2, 4, 6, 8, 10]
-
-// filter: 조건 필터링
-let filtered = filter(arr, fn(x) { return x > 2; });
-println(filtered);  // [3, 4, 5]
-
-// reduce: 축약
-let sum = reduce(arr, fn(acc, x) { return acc + x; });
-println(sum);  // 15
+```freelang
+let arr = [1, 2, 3, 4, 5]
+let doubled  = map(arr, fn(x) { return x * 2; })
+let filtered = filter(arr, fn(x) { return x > 2; })
+let sum      = reduce(arr, fn(acc, x) { return acc + x; })
 ```
 
-### 배열 & 메서드
+### 클로저
 
-```javascript
-let arr = [10, 20, 30];
-println(arr.len);           // 3
-println(arr[0]);            // 10
-arr[1] = 25;                // 요소 수정
-println(arr.slice(1, 3));   // [25, 30]
+```freelang
+fn counter() {
+    let n = 0
+    return fn() {
+        n = n + 1
+        return n
+    }
+}
+let c = counter()
+println(c())  // 1
+println(c())  // 2
 ```
 
 ### 예외 처리
 
-```javascript
+```freelang
 fn divide(a, b) {
-    if (b == 0) throw "Division by zero!";
-    return a / b;
+    if (b == 0) throw "Division by zero!"
+    return a / b
 }
 
 try {
-    println(divide(10, 2));   // 5.0
-    println(divide(10, 0));   // 에러 발생
+    println(divide(10, 2))
+    println(divide(10, 0))
 } catch (e) {
-    println("Error: " + e);
+    println("Error: " + e)
 }
 ```
 
-## 📊 구현 통계
+---
 
-| 항목 | 수치 |
-|------|------:|
-| **총 코드라인** | 12,074줄 |
-| **Opcode** | 45개 |
-| **표준 라이브러리** | 100+ 함수 |
-| **예제 파일** | 20+ 개 |
-| **컴파일 에러** | 0개 ✅ |
-| **바이너리 크기** | 130KB |
+## 프로젝트 구조
 
-## ✅ 완성도
-
-| Phase | 기능 | 상태 |
-|-------|------|------|
-| 1-3 | Lexer/Parser/AST/GC | ✅ 100% |
-| 4 | VM + 예외 처리 | ✅ 100% |
-| 5 | 함수/재귀 | ✅ 100% |
-| 6 | 배열/람다/고차함수 | ✅ 100% |
-| 7 | 클로저 Infrastructure | ✅ 30% |
-| **전체** | **완전한 Interpreter** | **✅ 100%** |
-
-## 🏗️ 45개 Opcode 완벽 구현
-
-### 스택 & 산술
 ```
-PUSH_*, POP, DUP, ADD, SUB, MUL, DIV, MOD
-```
-
-### 비교 & 논리
-```
-EQ, NEQ, LT, LTE, GT, GTE, AND, OR, NOT
-```
-
-### 제어 흐름
-```
-JMP, JMPT, JMPF, CALL, RET, HALT
-```
-
-### 변수 & 배열
-```
-LOAD_LOCAL, STORE_LOCAL, LOAD_GLOBAL, STORE_GLOBAL
-ARRAY_NEW, ARRAY_GET, ARRAY_SET, ARRAY_LEN
+freelang-c/
+├── include/
+│   ├── freelang.h        # 메인 헤더 (타입, Opcode)
+│   ├── http_secure.h     # Secure-Pipeline (Phase 6)
+│   ├── process.h         # Phoenix-Spawn (Phase 8)
+│   ├── cluster.h         # Cluster Manager (Phase 8)
+│   ├── logger.h          # 비동기 로거
+│   ├── introspect.h      # 런타임 인트로스펙션
+│   ├── ast.h, token.h, vm.h, ...
+│
+├── src/
+│   ├── main.c            # 진입점
+│   ├── lexer.c           # 토크나이저
+│   ├── parser.c          # 파서
+│   ├── compiler.c        # 컴파일러
+│   ├── vm.c              # 스택 VM (Opcode 50개)
+│   ├── runtime.c         # 런타임
+│   ├── stdlib.c          # 표준 라이브러리 (130+ 함수)
+│   ├── http_secure.c     # HTTP 보안 헤더 (Phase 6)
+│   ├── process.c         # 프로세스 관리 (Phase 8)
+│   ├── cluster.c         # 클러스터 (Phase 8)
+│   ├── logger.c          # 비동기 로거
+│   ├── introspect.c      # 인트로스펙션
+│   ├── gc.c, ast.c, closure.c, error.c, token.c, typechecker.c
+│
+├── examples/
+│   ├── secure-server.free   # HTTP 보안 서버 (Phase 6)
+│   ├── fibonacci.fl, closure.fl, arrays.fl, ...
+│
+├── Makefile
+└── bin/fl                # 실행파일 (188KB, 의존성 0)
 ```
 
-### 예외 & 클로저
-```
-TRY_START, CATCH_START, THROW, CATCH_END
-MAKE_CLOSURE, LOAD_UPVALUE, STORE_UPVALUE
-```
+---
 
-## 📖 문서
+## 빌드 요구사항
 
-- `README.md` - 이 파일
-- `PHASE*_COMPLETE.md` - 각 Phase 완성 보고서
-- `examples/` - 20+ 예제 파일
+- GCC 9+ 또는 Clang 10+
+- GNU Make 4.0+
+- Linux / macOS
 
-## 🎉 특징
-
-✨ **프로덕션 수준 품질**
-- 완전한 메모리 안전성 (GC)
-- 포괄적인 에러 메시지
-- 타입 검증
-- 모든 Phase 100% 구현
-
-## 🆕 Phase 4: MOSS-State 통합 ✅
-
-**Zero-Copy Reactive State Management 컴파일러 패치 완료!**
-
-### 구현 사항
-- ✅ AST 노드: NODE_REACTIVE_DECL, NODE_DECORATOR_DECL 추가
-- ✅ 토큰: TOK_REACTIVE, TOK_WATCH, TOK_TRANSACTION 추가 (31개 키워드)
-- ✅ Opcode: 5개 추가 (FL_OP_MAKE_REACTIVE, FL_OP_WATCH_FIELD 등)
-- ✅ 렉서: 3개 키워드 추가
-- ✅ 파서: parse_var_decl() 확장 (@decorator, reactive 처리)
-- ✅ 컴파일러: NODE_REACTIVE_DECL 컴파일 케이스 추가
-
-### 성능 달성
-| 항목 | 목표 | 달성 |
-|------|------|------|
-| 읽기 | < 1μs | **0.169μs** ✅ |
-| 쓰기 | < 100μs | **0.865μs** ✅ |
-| 옵저버 | < 10ms | **0.36ms** ✅ |
-| 동시 TX | 1000+ | **1000/1000** ✅ |
-
-### 사용 예제
-```freelang
-// reactive 상태 선언
-reactive let store = { count: 0, messages: [] };
-
-// @watch 데코레이터
-@watch
-fn onStateChange() {
-  print("State changed!");
-}
-
-// @transaction 데코레이터 (MVCC)
-@transaction
-fn addMessage(text) {
-  store.messages.push(text);
-  return true;
-}
+```bash
+make              # 기본 빌드
+make clean all    # 클린 빌드
+make debug        # 디버그 빌드
+make release      # 릴리즈 빌드 (-O3)
 ```
 
-### 관련 프로젝트
-- **MOSS-State Core**: https://gogs.dclub.kr/kim/moss-state-core
-- **예제 및 테스트**: examples/, test/phase4.e2e.js
+---
 
-## 📝 라이선스
-
-MIT License
-
-## 🔗 저장소
+## 저장소
 
 **Gogs**: https://gogs.dclub.kr/kim/freelang-c-final
 
 ---
 
-**Version**: 1.1.0 (Phase 4 완료)
-**Status**: ✅ Production Ready
+**Version**: 2.0.0
+**Status**: Production Ready
 **Updated**: 2026-03-08
-**Phase 4**: ✅ MOSS-State 컴파일러 통합 완료

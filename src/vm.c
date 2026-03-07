@@ -13,6 +13,10 @@
 #include "../include/closure.h"
 #include "../include/stdlib_fl.h"
 #include "../include/http_secure.h"
+#include "../include/process.h"
+#include "../include/cluster.h"
+#include "../include/introspect.h"
+#include <sys/wait.h>
 
 /* ============================================================
    VM Global State
@@ -433,6 +437,47 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
         fl_value_t ret = fl_http_response_json(args, argc);
         fl_vm_push(vm, ret);
         free(args);
+    /* ── Crypto (Phase 5: bcrypt 대체 — SHA-256/HMAC/PBKDF2/CSPRNG) ── */
+    } else if (strcmp(name, "sha256") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_sha256(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "hmac_sha256") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_hmac_sha256(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "pbkdf2") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_pbkdf2_hmac_sha256(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "crypto_random") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_crypto_random(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "bytes_to_hex") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_bytes_to_hex(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "crypto_compare") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_crypto_compare(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "u32_rotr") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_u32_rotr(args, argc);
+        fl_vm_push(vm, ret); free(args);
+    } else if (strcmp(name, "u32_add") == 0) {
+        fl_value_t* args = malloc((argc + 1) * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_value_t ret = fl_u32_add(args, argc);
+        fl_vm_push(vm, ret); free(args);
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;
@@ -1366,6 +1411,68 @@ fl_value_t fl_vm_execute(fl_vm_t* vm, const void* chunk_ptr) {
                             upval_idx, (void*)vm->current_closure,
                             vm->current_closure ? vm->current_closure->captured_count : 0);
                 }
+                break;
+            }
+
+            /* ===== Process Management (Phase 8: MOSS-Kernel-Runner) ===== */
+            case FL_OP_GET_METRICS: {
+                /* System.metrics() → push object onto stack */
+                fl_value_t none_args[1];
+                fl_value_t metrics = fl_system_metrics(none_args, 0);
+                fl_vm_push(vm, metrics);
+                break;
+            }
+
+            case FL_OP_SPAWN_PROCESS: {
+                /* stack: [name, script, autorestart] → [pid] */
+                fl_value_t autorestart_v = fl_vm_pop(vm);
+                fl_value_t script_v      = fl_vm_pop(vm);
+                fl_value_t name_v        = fl_vm_pop(vm);
+                fl_value_t spawn_args[3] = { name_v, script_v, autorestart_v };
+                fl_value_t pid_v = fl_process_spawn(spawn_args, 3);
+                fl_vm_push(vm, pid_v);
+                break;
+            }
+
+            case FL_OP_KILL_PROCESS: {
+                /* stack: [pid, signal] → [ok] */
+                fl_value_t sig_v = fl_vm_pop(vm);
+                fl_value_t pid_v = fl_vm_pop(vm);
+                fl_value_t kill_args[2] = { pid_v, sig_v };
+                fl_value_t ok_v = fl_process_kill(kill_args, 2);
+                fl_vm_push(vm, ok_v);
+                break;
+            }
+
+            case FL_OP_WAIT_PROCESS: {
+                /* stack: [pid] → [exit_code] */
+                fl_value_t pid_v = fl_vm_pop(vm);
+                if (pid_v.type == FL_TYPE_INT) {
+                    int status = 0;
+                    waitpid((pid_t)pid_v.data.int_val, &status, 0);
+                    int code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+                    fl_value_t ec;
+                    ec.type = FL_TYPE_INT;
+                    ec.data.int_val = code;
+                    fl_vm_push(vm, ec);
+                } else {
+                    fl_value_t null_v; null_v.type = FL_TYPE_NULL;
+                    fl_vm_push(vm, null_v);
+                }
+                break;
+            }
+
+            case FL_OP_CLUSTER_INIT: {
+                /* stack: [n] → [] (spawns workers, master blocks) */
+                fl_value_t n_v = fl_vm_pop(vm);
+                fl_value_t cargs[1] = { n_v };
+                fl_cluster_workers(cargs, 1);
+                break;
+            }
+
+            case FL_OP_DAEMONIZE: {
+                fl_value_t no_args[1];
+                fl_system_daemonize(no_args, 0);
                 break;
             }
 

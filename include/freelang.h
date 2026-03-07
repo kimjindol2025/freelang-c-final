@@ -214,6 +214,14 @@ typedef enum {
     FL_OP_TRANSACTION_COMMIT,/* [txn_id] → [success] */
     FL_OP_TRANSACTION_ABORT, /* [txn_id] → [] */
 
+    /* Process Management (Phase 8: MOSS-Kernel-Runner) */
+    FL_OP_SPAWN_PROCESS,     /* [name, script, autorestart] → [pid] */
+    FL_OP_KILL_PROCESS,      /* [pid, signal] → [ok] */
+    FL_OP_WAIT_PROCESS,      /* [pid] → [exit_code] */
+    FL_OP_GET_METRICS,       /* [] → [metrics_object] */
+    FL_OP_CLUSTER_INIT,      /* [n] → [] (fork N workers) */
+    FL_OP_DAEMONIZE,         /* [] → [] (background daemon) */
+
     /* Other */
     FL_OP_HALT,
     FL_OP_NOP

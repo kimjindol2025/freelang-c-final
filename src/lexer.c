@@ -44,6 +44,12 @@ static KeywordEntry keywords[] = {
     { "reactive", TOK_REACTIVE },    // Phase 4: MOSS-State
     { "watch", TOK_WATCH },          // Phase 4: MOSS-State
     { "transaction", TOK_TRANSACTION }, // Phase 4: MOSS-State
+    { "u32", TOK_U32 },              // Phase 5: unsigned 32-bit
+    { "u64", TOK_U64 },              // Phase 5: unsigned 64-bit
+    { "intrinsic", TOK_INTRINSIC },  // Phase 5: native CPU instruction
+    { "u8", TOK_U8 },               // Phase 6: unsigned 8-bit (pixel channel)
+    { "aligned", TOK_ALIGNED },      // Phase 6: SIMD memory alignment
+    { "vectorize", TOK_VECTORIZE },  // Phase 6: SIMD loop hint
     { NULL, 0 }
 };
 

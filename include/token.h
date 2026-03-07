@@ -44,6 +44,16 @@ typedef enum {
     TOK_WATCH,          // "watch" keyword/decorator (Phase 4)
     TOK_TRANSACTION,    // "transaction" keyword/decorator (Phase 4)
 
+    // Type keywords (Phase 5: Crypto/u32/u64)
+    TOK_U32,            // "u32" - 32-bit unsigned integer type
+    TOK_U64,            // "u64" - 64-bit unsigned integer type
+    TOK_INTRINSIC,      // "intrinsic" - native CPU instruction mapping
+
+    // Vector-Vision keywords (Phase 6: SIMD Image Processing)
+    TOK_U8,             // "u8"  - 8-bit unsigned integer (pixel channel)
+    TOK_ALIGNED,        // "aligned" - memory alignment hint (aligned(32))
+    TOK_VECTORIZE,      // "vectorize" - SIMD loop vectorization decorator
+
     // Operators (26)
     TOK_PLUS,
     TOK_MINUS,
@@ -98,8 +108,8 @@ typedef enum {
     TOK_EOF
 } TokenType;
 
-#define TOK_KEYWORD_COUNT 31
-#define TOK_TOTAL_COUNT 65
+#define TOK_KEYWORD_COUNT 37
+#define TOK_TOTAL_COUNT 71
 
 typedef struct {
     TokenType type;

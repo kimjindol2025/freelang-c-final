@@ -9,6 +9,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <time.h>
+#include <stdint.h>
 #include "../include/stdlib_fl.h"
 #include "../include/runtime.h"
 
@@ -1696,6 +1697,441 @@ void fl_stdlib_register(fl_runtime_t* runtime) {
      * The functions are implemented above and can be called directly or through
      * a function lookup table in the runtime/VM.
      */
+
+    /* Crypto Functions (Phase 5) */
+    /* sha256(bytes|string) -> bytes[32]
+     * hmac_sha256(key, data) -> bytes[32]
+     * pbkdf2(password, salt, iterations, dklen) -> bytes
+     * crypto_random(n) -> bytes[n]
+     * bytes_to_hex(bytes) -> string
+     * crypto_compare(a, b) -> bool
+     * u32_rotr(val, n) -> u32
+     * u32_add(a, b) -> u32
+     */
+
+    /* Proof-Logger Functions (Phase 9) */
+    fl_runtime_register_builtin(runtime, "log_configure", fl_log_configure_builtin);
+    fl_runtime_register_builtin(runtime, "log_debug",     fl_log_debug_builtin);
+    fl_runtime_register_builtin(runtime, "log_info",      fl_log_info_builtin);
+    fl_runtime_register_builtin(runtime, "log_warn",      fl_log_warn_builtin);
+    fl_runtime_register_builtin(runtime, "log_error",     fl_log_error_builtin);
+    fl_runtime_register_builtin(runtime, "log_flush",     fl_log_flush_builtin);
+    fl_runtime_register_builtin(runtime, "log_stats",     fl_log_stats_builtin);
+}
+
+/* ============================================================================
+   PHASE 5: Crypto Standard Library — SHA-256, HMAC, PBKDF2
+   FIPS 180-4, RFC 2104, RFC 8018
+   Zero external dependencies. Pure C implementation.
+   ============================================================================ */
+
+/* --- SHA-256 Constants (FIPS 180-4 §4.2.2) --- */
+static const uint32_t SHA256_K[64] = {
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
+    0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+    0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+    0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
+    0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
+    0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+};
+
+/* SHA-256 initial hash values (FIPS 180-4 §5.3.3) */
+static const uint32_t SHA256_H0[8] = {
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+};
+
+#define SHA256_ROTR(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
+#define SHA256_CH(x, y, z)  (((x) & (y)) ^ (~(x) & (z)))
+#define SHA256_MAJ(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
+#define SHA256_SIG0(x) (SHA256_ROTR(x,  2) ^ SHA256_ROTR(x, 13) ^ SHA256_ROTR(x, 22))
+#define SHA256_SIG1(x) (SHA256_ROTR(x,  6) ^ SHA256_ROTR(x, 11) ^ SHA256_ROTR(x, 25))
+#define SHA256_GAM0(x) (SHA256_ROTR(x,  7) ^ SHA256_ROTR(x, 18) ^ ((x) >>  3))
+#define SHA256_GAM1(x) (SHA256_ROTR(x, 17) ^ SHA256_ROTR(x, 19) ^ ((x) >> 10))
+
+/* Internal: compress one 512-bit block into hash state */
+static void sha256_compress(uint32_t state[8], const uint8_t block[64]) {
+    uint32_t w[64];
+    uint32_t a, b, c, d, e, f, g, h, t1, t2;
+    int i;
+
+    /* Message schedule */
+    for (i = 0; i < 16; i++) {
+        w[i] = ((uint32_t)block[i*4]     << 24)
+             | ((uint32_t)block[i*4 + 1] << 16)
+             | ((uint32_t)block[i*4 + 2] <<  8)
+             | ((uint32_t)block[i*4 + 3]);
+    }
+    for (i = 16; i < 64; i++) {
+        w[i] = SHA256_GAM1(w[i-2]) + w[i-7] + SHA256_GAM0(w[i-15]) + w[i-16];
+    }
+
+    /* Initialize working variables */
+    a = state[0]; b = state[1]; c = state[2]; d = state[3];
+    e = state[4]; f = state[5]; g = state[6]; h = state[7];
+
+    /* 64 rounds */
+    for (i = 0; i < 64; i++) {
+        t1 = h + SHA256_SIG1(e) + SHA256_CH(e, f, g) + SHA256_K[i] + w[i];
+        t2 = SHA256_SIG0(a) + SHA256_MAJ(a, b, c);
+        h = g; g = f; f = e; e = d + t1;
+        d = c; c = b; b = a; a = t1 + t2;
+    }
+
+    state[0] += a; state[1] += b; state[2] += c; state[3] += d;
+    state[4] += e; state[5] += f; state[6] += g; state[7] += h;
+}
+
+/* Core SHA-256: hash raw bytes, write 32-byte digest into out */
+static void sha256_raw(const uint8_t *data, size_t len, uint8_t out[32]) {
+    uint32_t state[8];
+    uint8_t block[64];
+    size_t i;
+
+    memcpy(state, SHA256_H0, sizeof(state));
+
+    /* Process full blocks */
+    size_t offset = 0;
+    while (offset + 64 <= len) {
+        sha256_compress(state, data + offset);
+        offset += 64;
+    }
+
+    /* Final block(s) with padding (FIPS 180-4 §5.1.1) */
+    size_t remain = len - offset;
+    memcpy(block, data + offset, remain);
+    block[remain] = 0x80;
+    memset(block + remain + 1, 0, 64 - remain - 1);
+
+    if (remain >= 56) {
+        /* Need extra block */
+        sha256_compress(state, block);
+        memset(block, 0, 56);
+    }
+
+    /* Append bit length (big-endian 64-bit) */
+    uint64_t bit_len = (uint64_t)len * 8;
+    for (i = 0; i < 8; i++) {
+        block[63 - i] = (uint8_t)(bit_len >> (i * 8));
+    }
+    sha256_compress(state, block);
+
+    /* Output digest (big-endian) */
+    for (i = 0; i < 8; i++) {
+        out[i*4]     = (uint8_t)(state[i] >> 24);
+        out[i*4 + 1] = (uint8_t)(state[i] >> 16);
+        out[i*4 + 2] = (uint8_t)(state[i] >>  8);
+        out[i*4 + 3] = (uint8_t)(state[i]);
+    }
+}
+
+/* Helper: make fl_value_t from raw 32-byte digest */
+static fl_value_t make_bytes_from_raw(const uint8_t *data, size_t len) {
+    fl_bytes_t *b = malloc(sizeof(fl_bytes_t));
+    b->data = malloc(len);
+    memcpy(b->data, data, len);
+    b->size = len;
+    b->capacity = len;
+    fl_value_t result;
+    result.type = FL_TYPE_BYTES;
+    result.data.bytes_val = b;
+    return result;
+}
+
+/* --- FreeLang binding: sha256(bytes|string) -> bytes[32] --- */
+fl_value_t fl_sha256(fl_value_t *args, size_t argc) {
+    if (argc < 1) {
+        fprintf(stderr, "[CRYPTO] sha256: requires 1 argument\n");
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    const uint8_t *data = NULL;
+    size_t len = 0;
+    uint8_t str_buf[0]; /* placeholder */
+
+    if (args[0].type == FL_TYPE_BYTES && args[0].data.bytes_val) {
+        data = args[0].data.bytes_val->data;
+        len  = args[0].data.bytes_val->size;
+    } else if (args[0].type == FL_TYPE_STRING && args[0].data.string_val) {
+        data = (const uint8_t *)args[0].data.string_val;
+        len  = strlen(args[0].data.string_val);
+    } else {
+        fprintf(stderr, "[CRYPTO] sha256: requires bytes or string\n");
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    uint8_t digest[32];
+    sha256_raw(data, len, digest);
+    return make_bytes_from_raw(digest, 32);
+}
+
+/* --- HMAC-SHA256 (RFC 2104) --- */
+static void hmac_sha256_raw(const uint8_t *key, size_t key_len,
+                             const uint8_t *msg, size_t msg_len,
+                             uint8_t out[32]) {
+    uint8_t k_ipad[64], k_opad[64];
+    uint8_t k_block[32];
+
+    /* If key > 64 bytes, hash it first */
+    if (key_len > 64) {
+        sha256_raw(key, key_len, k_block);
+        key = k_block;
+        key_len = 32;
+    }
+
+    memset(k_ipad, 0x36, 64);
+    memset(k_opad, 0x5c, 64);
+    for (size_t i = 0; i < key_len; i++) {
+        k_ipad[i] ^= key[i];
+        k_opad[i] ^= key[i];
+    }
+
+    /* inner = SHA256(k_ipad || msg) */
+    size_t inner_len = 64 + msg_len;
+    uint8_t *inner_buf = malloc(inner_len);
+    memcpy(inner_buf, k_ipad, 64);
+    memcpy(inner_buf + 64, msg, msg_len);
+    uint8_t inner_hash[32];
+    sha256_raw(inner_buf, inner_len, inner_hash);
+    free(inner_buf);
+
+    /* out = SHA256(k_opad || inner_hash) */
+    uint8_t outer_buf[64 + 32];
+    memcpy(outer_buf, k_opad, 64);
+    memcpy(outer_buf + 64, inner_hash, 32);
+    sha256_raw(outer_buf, 64 + 32, out);
+}
+
+fl_value_t fl_hmac_sha256(fl_value_t *args, size_t argc) {
+    if (argc < 2) {
+        fprintf(stderr, "[CRYPTO] hmac_sha256: requires 2 arguments (key, data)\n");
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    const uint8_t *key_data = NULL; size_t key_len = 0;
+    const uint8_t *msg_data = NULL; size_t msg_len = 0;
+
+    if (args[0].type == FL_TYPE_BYTES && args[0].data.bytes_val) {
+        key_data = args[0].data.bytes_val->data;
+        key_len  = args[0].data.bytes_val->size;
+    } else if (args[0].type == FL_TYPE_STRING && args[0].data.string_val) {
+        key_data = (const uint8_t *)args[0].data.string_val;
+        key_len  = strlen(args[0].data.string_val);
+    }
+
+    if (args[1].type == FL_TYPE_BYTES && args[1].data.bytes_val) {
+        msg_data = args[1].data.bytes_val->data;
+        msg_len  = args[1].data.bytes_val->size;
+    } else if (args[1].type == FL_TYPE_STRING && args[1].data.string_val) {
+        msg_data = (const uint8_t *)args[1].data.string_val;
+        msg_len  = strlen(args[1].data.string_val);
+    }
+
+    if (!key_data || !msg_data) {
+        fprintf(stderr, "[CRYPTO] hmac_sha256: invalid argument types\n");
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    uint8_t mac[32];
+    hmac_sha256_raw(key_data, key_len, msg_data, msg_len, mac);
+    return make_bytes_from_raw(mac, 32);
+}
+
+/* --- PBKDF2-HMAC-SHA256 (RFC 8018 §5.2) — bcrypt 대체 --- */
+fl_value_t fl_pbkdf2_hmac_sha256(fl_value_t *args, size_t argc) {
+    if (argc < 4) {
+        fprintf(stderr, "[CRYPTO] pbkdf2: requires 4 arguments (password, salt, iterations, dklen)\n");
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    const uint8_t *pwd  = NULL; size_t pwd_len  = 0;
+    const uint8_t *salt = NULL; size_t salt_len = 0;
+    size_t iterations = 10000;
+    size_t dklen = 32;
+
+    if (args[0].type == FL_TYPE_BYTES && args[0].data.bytes_val) {
+        pwd = args[0].data.bytes_val->data; pwd_len = args[0].data.bytes_val->size;
+    } else if (args[0].type == FL_TYPE_STRING && args[0].data.string_val) {
+        pwd = (const uint8_t *)args[0].data.string_val;
+        pwd_len = strlen(args[0].data.string_val);
+    }
+    if (args[1].type == FL_TYPE_BYTES && args[1].data.bytes_val) {
+        salt = args[1].data.bytes_val->data; salt_len = args[1].data.bytes_val->size;
+    } else if (args[1].type == FL_TYPE_STRING && args[1].data.string_val) {
+        salt = (const uint8_t *)args[1].data.string_val;
+        salt_len = strlen(args[1].data.string_val);
+    }
+    if (args[2].type == FL_TYPE_INT)   iterations = (size_t)args[2].data.int_val;
+    if (args[3].type == FL_TYPE_INT)   dklen      = (size_t)args[3].data.int_val;
+
+    if (!pwd || !salt || iterations == 0 || dklen == 0) {
+        fprintf(stderr, "[CRYPTO] pbkdf2: invalid arguments\n");
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    /* PBKDF2: DK = T1 || T2 || ... where Ti = F(pwd, salt, c, i) */
+    size_t hlen = 32; /* HMAC-SHA256 output */
+    size_t blocks = (dklen + hlen - 1) / hlen;
+
+    uint8_t *dk = malloc(blocks * hlen);
+    uint8_t *salt_block = malloc(salt_len + 4);
+    memcpy(salt_block, salt, salt_len);
+
+    for (size_t block_idx = 1; block_idx <= blocks; block_idx++) {
+        /* U1 = HMAC(pwd, salt || INT(i)) */
+        salt_block[salt_len]     = (uint8_t)(block_idx >> 24);
+        salt_block[salt_len + 1] = (uint8_t)(block_idx >> 16);
+        salt_block[salt_len + 2] = (uint8_t)(block_idx >>  8);
+        salt_block[salt_len + 3] = (uint8_t)(block_idx);
+
+        uint8_t u[32], t[32];
+        hmac_sha256_raw(pwd, pwd_len, salt_block, salt_len + 4, u);
+        memcpy(t, u, 32);
+
+        /* Uj = HMAC(pwd, U_{j-1}), T = T XOR Uj */
+        for (size_t j = 1; j < iterations; j++) {
+            hmac_sha256_raw(pwd, pwd_len, u, 32, u);
+            for (size_t k = 0; k < 32; k++) t[k] ^= u[k];
+        }
+        memcpy(dk + (block_idx - 1) * hlen, t, hlen);
+    }
+
+    free(salt_block);
+
+    fl_bytes_t *b = malloc(sizeof(fl_bytes_t));
+    b->data = dk;
+    b->size = dklen;
+    b->capacity = blocks * hlen;
+    fl_value_t result;
+    result.type = FL_TYPE_BYTES;
+    result.data.bytes_val = b;
+    return result;
+}
+
+/* --- CSPRNG: crypto_random(n) -> bytes[n] via /dev/urandom --- */
+fl_value_t fl_crypto_random(fl_value_t *args, size_t argc) {
+    size_t n = 16; /* default: 16 bytes */
+    if (argc >= 1 && args[0].type == FL_TYPE_INT) {
+        n = (size_t)args[0].data.int_val;
+        if (n == 0 || n > 4096) {
+            fprintf(stderr, "[CRYPTO] crypto_random: n must be 1-4096\n");
+            fl_value_t v; v.type = FL_TYPE_NULL; return v;
+        }
+    }
+
+    uint8_t *buf = malloc(n);
+    FILE *urandom = fopen("/dev/urandom", "rb");
+    if (!urandom) {
+        fprintf(stderr, "[CRYPTO] crypto_random: /dev/urandom unavailable\n");
+        free(buf);
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+    size_t read_n = fread(buf, 1, n, urandom);
+    fclose(urandom);
+
+    if (read_n != n) {
+        fprintf(stderr, "[CRYPTO] crypto_random: partial read %zu/%zu\n", read_n, n);
+        free(buf);
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    fl_bytes_t *b = malloc(sizeof(fl_bytes_t));
+    b->data = buf;
+    b->size = n;
+    b->capacity = n;
+    fl_value_t result;
+    result.type = FL_TYPE_BYTES;
+    result.data.bytes_val = b;
+    return result;
+}
+
+/* --- bytes_to_hex(bytes) -> string --- */
+fl_value_t fl_bytes_to_hex(fl_value_t *args, size_t argc) {
+    if (argc < 1 || args[0].type != FL_TYPE_BYTES || !args[0].data.bytes_val) {
+        fprintf(stderr, "[CRYPTO] bytes_to_hex: requires bytes argument\n");
+        fl_value_t v; v.type = FL_TYPE_NULL; return v;
+    }
+
+    fl_bytes_t *b = args[0].data.bytes_val;
+    char *hex = malloc(b->size * 2 + 1);
+    static const char hex_chars[] = "0123456789abcdef";
+    for (size_t i = 0; i < b->size; i++) {
+        hex[i*2]     = hex_chars[(b->data[i] >> 4) & 0xF];
+        hex[i*2 + 1] = hex_chars[b->data[i] & 0xF];
+    }
+    hex[b->size * 2] = '\0';
+
+    fl_value_t result;
+    result.type = FL_TYPE_STRING;
+    result.data.string_val = hex;
+    return result;
+}
+
+/* --- Timing-safe compare: crypto_compare(a, b) -> bool
+       Constant-time to prevent timing attacks (RFC 6151) --- */
+fl_value_t fl_crypto_compare(fl_value_t *args, size_t argc) {
+    if (argc < 2) {
+        fl_value_t v; v.type = FL_TYPE_BOOL; v.data.bool_val = 0; return v;
+    }
+
+    const uint8_t *a = NULL; size_t a_len = 0;
+    const uint8_t *b = NULL; size_t b_len = 0;
+
+    if (args[0].type == FL_TYPE_BYTES && args[0].data.bytes_val) {
+        a = args[0].data.bytes_val->data; a_len = args[0].data.bytes_val->size;
+    }
+    if (args[1].type == FL_TYPE_BYTES && args[1].data.bytes_val) {
+        b = args[1].data.bytes_val->data; b_len = args[1].data.bytes_val->size;
+    }
+
+    if (!a || !b || a_len != b_len) {
+        fl_value_t v; v.type = FL_TYPE_BOOL; v.data.bool_val = 0; return v;
+    }
+
+    /* XOR all bytes, accumulate differences — no early exit */
+    volatile uint8_t diff = 0;
+    for (size_t i = 0; i < a_len; i++) {
+        diff |= a[i] ^ b[i];
+    }
+
+    fl_value_t result;
+    result.type = FL_TYPE_BOOL;
+    result.data.bool_val = (diff == 0) ? 1 : 0;
+    return result;
+}
+
+/* --- u32 bit rotation: u32_rotr(val, n) -> u32 --- */
+fl_value_t fl_u32_rotr(fl_value_t *args, size_t argc) {
+    if (argc < 2) { fl_value_t v; v.type = FL_TYPE_NULL; return v; }
+    uint32_t val = (uint32_t)(args[0].type == FL_TYPE_INT ? args[0].data.int_val : (int64_t)args[0].data.float_val);
+    uint32_t n   = (uint32_t)(args[1].type == FL_TYPE_INT ? args[1].data.int_val : (int64_t)args[1].data.float_val) & 31;
+    uint32_t result = (val >> n) | (val << (32 - n));
+    fl_value_t v;
+    v.type = FL_TYPE_INT;
+    v.data.int_val = (int64_t)result;
+    return v;
+}
+
+/* --- u32 add with overflow (mod 2^32): u32_add(a, b) -> u32 --- */
+fl_value_t fl_u32_add(fl_value_t *args, size_t argc) {
+    if (argc < 2) { fl_value_t v; v.type = FL_TYPE_NULL; return v; }
+    uint32_t a = (uint32_t)(args[0].type == FL_TYPE_INT ? args[0].data.int_val : (int64_t)args[0].data.float_val);
+    uint32_t b = (uint32_t)(args[1].type == FL_TYPE_INT ? args[1].data.int_val : (int64_t)args[1].data.float_val);
+    uint32_t result = a + b; /* natural overflow mod 2^32 */
+    fl_value_t v;
+    v.type = FL_TYPE_INT;
+    v.data.int_val = (int64_t)result;
+    return v;
 }
 
 /**
@@ -2084,5 +2520,259 @@ fl_value_t fl_bytes_write_u64(fl_value_t* args, size_t argc) {
         b->size = offset + 8;
     }
 
+    return fl_new_null();
+}
+
+/* ============================================================================
+   PHASE 8: Process Management - MOSS-Kernel-Runner
+   PM2를 대체하는 네이티브 프로세스 관리
+   ============================================================================ */
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <errno.h>
+#include "../include/process.h"
+#include "../include/cluster.h"
+#include "../include/introspect.h"
+
+/* 글로벌 프로세스 매니저 (fl_stdlib_register에서 초기화) */
+static fl_process_manager_t* g_stdlib_pm = NULL;
+
+static fl_value_t fl_make_bool(bool v) {
+    fl_value_t r; r.type = FL_TYPE_BOOL; r.data.bool_val = v; return r;
+}
+static fl_value_t fl_make_int(int64_t v) {
+    fl_value_t r; r.type = FL_TYPE_INT; r.data.int_val = v; return r;
+}
+static fl_value_t fl_make_string_copy(const char* s) {
+    fl_value_t r;
+    r.type = FL_TYPE_STRING;
+    r.data.string_val = (char*)malloc(strlen(s) + 1);
+    if (r.data.string_val) strcpy(r.data.string_val, s);
+    return r;
+}
+
+/*
+ * process_spawn(name, script, autorestart=true, max_restarts=-1) -> pid
+ * Phoenix-Spawn 등록 + 즉시 시작
+ */
+fl_value_t fl_process_spawn(fl_value_t* args, size_t argc) {
+    if (argc < 2) return fl_new_null();
+    if (args[0].type != FL_TYPE_STRING || args[1].type != FL_TYPE_STRING)
+        return fl_new_null();
+
+    const char* name   = args[0].data.string_val;
+    const char* script = args[1].data.string_val;
+    bool autorestart   = (argc >= 3 && args[2].type == FL_TYPE_BOOL)
+                         ? args[2].data.bool_val : true;
+    int max_restarts   = (argc >= 4 && args[3].type == FL_TYPE_INT)
+                         ? (int)args[3].data.int_val : -1;
+
+    /* 매니저 초기화 (최초 1회) */
+    if (!g_stdlib_pm) {
+        g_stdlib_pm = fl_pm_create();
+        fl_pm_install_watchdog(g_stdlib_pm);
+    }
+
+    fl_process_entry_t* entry = fl_pm_register(g_stdlib_pm, name, script,
+                                                autorestart, max_restarts);
+    if (!entry) return fl_new_null();
+
+    fl_pm_start(g_stdlib_pm, name);
+    return fl_make_int((int64_t)entry->pid);
+}
+
+/*
+ * process_kill(pid, signal=15) -> ok
+ */
+fl_value_t fl_process_kill(fl_value_t* args, size_t argc) {
+    if (argc < 1 || args[0].type != FL_TYPE_INT) return fl_make_bool(false);
+    pid_t pid = (pid_t)args[0].data.int_val;
+    int   sig = (argc >= 2 && args[1].type == FL_TYPE_INT)
+                ? (int)args[1].data.int_val : SIGTERM;
+    int ret = kill(pid, sig);
+    return fl_make_bool(ret == 0);
+}
+
+/*
+ * process_list() -> array of {name, pid, status, restarts}
+ */
+fl_value_t fl_process_list(fl_value_t* args, size_t argc) {
+    (void)args; (void)argc;
+
+    fl_value_t result;
+    result.type = FL_TYPE_ARRAY;
+    result.data.array_val = (fl_array_t*)malloc(sizeof(fl_array_t));
+    if (!result.data.array_val) return fl_new_null();
+
+    fl_array_t* arr = result.data.array_val;
+    arr->capacity = 16;
+    arr->size     = 0;
+    arr->elements = (fl_value_t*)malloc(arr->capacity * sizeof(fl_value_t));
+    if (!arr->elements) { free(arr); return fl_new_null(); }
+
+    if (!g_stdlib_pm) return result;
+
+    fl_process_entry_t* entry = g_stdlib_pm->head;
+    while (entry) {
+        /* 각 프로세스 → object */
+        fl_value_t obj;
+        obj.type = FL_TYPE_OBJECT;
+        obj.data.object_val = (fl_object_t*)malloc(sizeof(fl_object_t));
+        if (obj.data.object_val) {
+            fl_object_t* o = obj.data.object_val;
+            o->capacity = 8;
+            o->size     = 0;
+            o->keys   = (char**)malloc(8 * sizeof(char*));
+            o->values = (fl_value_t*)malloc(8 * sizeof(fl_value_t));
+
+            if (o->keys && o->values) {
+                /* name */
+                o->keys[0]   = strdup("name");
+                o->values[0] = fl_make_string_copy(entry->name);
+                /* pid */
+                o->keys[1]   = strdup("pid");
+                o->values[1] = fl_make_int(entry->pid);
+                /* restarts */
+                o->keys[2]   = strdup("restarts");
+                o->values[2] = fl_make_int(entry->restarts);
+                /* autorestart */
+                o->keys[3]   = strdup("autorestart");
+                o->values[3] = fl_make_bool(entry->autorestart);
+                o->size = 4;
+            }
+
+            if (arr->size >= arr->capacity) {
+                arr->capacity *= 2;
+                arr->elements = (fl_value_t*)realloc(arr->elements,
+                    arr->capacity * sizeof(fl_value_t));
+            }
+            arr->elements[arr->size++] = obj;
+        }
+        entry = entry->next;
+    }
+
+    return result;
+}
+
+/*
+ * process_restart(name) -> ok
+ */
+fl_value_t fl_process_restart(fl_value_t* args, size_t argc) {
+    if (argc < 1 || args[0].type != FL_TYPE_STRING) return fl_make_bool(false);
+    if (!g_stdlib_pm) return fl_make_bool(false);
+    int ret = fl_pm_restart(g_stdlib_pm, args[0].data.string_val);
+    return fl_make_bool(ret == 0);
+}
+
+/*
+ * System.metrics() -> object with pid, uptime_ms, mem_rss_kb, cpu_percent, gc_collections
+ */
+fl_value_t fl_system_metrics(fl_value_t* args, size_t argc) {
+    (void)args; (void)argc;
+
+    fl_metrics_t m = fl_metrics_collect();
+    char* json = fl_metrics_to_json(&m);
+
+    fl_value_t obj;
+    obj.type = FL_TYPE_OBJECT;
+    obj.data.object_val = (fl_object_t*)malloc(sizeof(fl_object_t));
+    if (!obj.data.object_val) { free(json); return fl_new_null(); }
+
+    fl_object_t* o = obj.data.object_val;
+    o->capacity = 16;
+    o->size     = 0;
+    o->keys   = (char**)malloc(16 * sizeof(char*));
+    o->values = (fl_value_t*)malloc(16 * sizeof(fl_value_t));
+
+    if (o->keys && o->values) {
+        o->keys[0]   = strdup("pid");
+        o->values[0] = fl_make_int(m.pid);
+        o->keys[1]   = strdup("uptime_ms");
+        o->values[1] = fl_make_int((int64_t)m.uptime_ms);
+        o->keys[2]   = strdup("mem_rss_kb");
+        o->values[2] = fl_make_int((int64_t)m.mem_rss_kb);
+        o->keys[3]   = strdup("mem_virt_kb");
+        o->values[3] = fl_make_int((int64_t)m.mem_virt_kb);
+        o->keys[4]   = strdup("cpu_percent");
+        o->values[4].type = FL_TYPE_FLOAT;
+        o->values[4].data.float_val = m.cpu_percent;
+        o->keys[5]   = strdup("gc_collections");
+        o->values[5] = fl_make_int((int64_t)m.gc_collections);
+        o->keys[6]   = strdup("json");
+        o->values[6] = json ? fl_make_string_copy(json) : fl_new_null();
+        o->size = 7;
+    }
+
+    free(json);
+    return obj;
+}
+
+/*
+ * System.daemonize() -> ok
+ * 현재 프로세스를 백그라운드 데몬으로 전환
+ */
+fl_value_t fl_system_daemonize(fl_value_t* args, size_t argc) {
+    (void)args; (void)argc;
+    int ret = fl_pm_daemonize();
+    return fl_make_bool(ret == 0);
+}
+
+/*
+ * cluster_workers(n=auto) -> worker_id
+ * n개 worker 포크. master는 run_master() 진입 (블로킹),
+ * worker는 worker_id(0+) 반환 (호출자가 서버 루프 실행)
+ *
+ * 간략 버전: 실제 어노테이션 컴파일러 지원 없이
+ * FreeLang에서 직접 호출 가능한 런타임 API
+ */
+static int g_worker_id = -1;  /* -1 = master */
+
+static void default_worker_fn(int id, void* data) {
+    (void)data;
+    g_worker_id = id;
+    /* worker: 호출자에게 worker_id 반환 후 계속 실행 */
+}
+
+fl_value_t fl_cluster_workers(fl_value_t* args, size_t argc) {
+    int n = 0; /* 0 = auto */
+    if (argc >= 1 && args[0].type == FL_TYPE_INT) {
+        n = (int)args[0].data.int_val;
+    }
+
+    fl_cluster_t* cluster = fl_cluster_spawn(n, default_worker_fn, NULL);
+    if (!cluster) {
+        /* worker 프로세스: default_worker_fn이 g_worker_id 설정 후 종료 */
+        return fl_make_int(g_worker_id);
+    }
+
+    /* master: 이벤트 루프 (블로킹) */
+    fl_cluster_run_master(cluster);
+    fl_cluster_destroy(cluster);
+    return fl_make_int(-1); /* master */
+}
+
+/*
+ * process_pid() -> PID
+ */
+fl_value_t fl_process_pid(fl_value_t* args, size_t argc) {
+    (void)args; (void)argc;
+    return fl_make_int((int64_t)getpid());
+}
+
+/*
+ * process_sleep(ms) -> null
+ */
+fl_value_t fl_process_sleep(fl_value_t* args, size_t argc) {
+    if (argc < 1 || args[0].type != FL_TYPE_INT) return fl_new_null();
+    int64_t ms = args[0].data.int_val;
+    if (ms > 0) {
+        struct timespec ts;
+        ts.tv_sec  = ms / 1000;
+        ts.tv_nsec = (ms % 1000) * 1000000L;
+        nanosleep(&ts, NULL);
+    }
     return fl_new_null();
 }

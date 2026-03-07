@@ -125,6 +125,44 @@ fl_value_t fl_http_hsts(fl_value_t* args, size_t argc);
 fl_value_t fl_http_response(fl_value_t* args, size_t argc);
 fl_value_t fl_http_response_json(fl_value_t* args, size_t argc);
 
+/* ============================================================
+   Vector-Vision Functions (Phase 6 - sharp 대체, 외부 의존성 0)
+   이미지 데이터: FL_TYPE_OBJECT { width, height, channels, data(bytes) }
+   @vectorize: 픽셀 루프 → SIMD 자동 병렬화
+   ============================================================ */
+fl_value_t fl_vision_load(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_save(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_resize(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_width(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_height(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_channels(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_grayscale(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_blur(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_pixel_get(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_pixel_set(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_info(fl_value_t* args, size_t argc);
+fl_value_t fl_vision_simd_caps(fl_value_t* args, size_t argc);
+
+/* Process Management (Phase 8: MOSS-Kernel-Runner) */
+fl_value_t fl_process_spawn(fl_value_t* args, size_t argc);    /* (name, script, autorestart?) -> pid */
+fl_value_t fl_process_kill(fl_value_t* args, size_t argc);     /* (pid, signal?) -> ok */
+fl_value_t fl_process_list(fl_value_t* args, size_t argc);     /* () -> array */
+fl_value_t fl_process_restart(fl_value_t* args, size_t argc);  /* (name) -> ok */
+fl_value_t fl_system_metrics(fl_value_t* args, size_t argc);   /* () -> metrics object */
+fl_value_t fl_system_daemonize(fl_value_t* args, size_t argc); /* () -> ok */
+fl_value_t fl_cluster_workers(fl_value_t* args, size_t argc);  /* (n?) -> worker_id */
+fl_value_t fl_process_pid(fl_value_t* args, size_t argc);      /* () -> current PID */
+fl_value_t fl_process_sleep(fl_value_t* args, size_t argc);    /* (ms) -> null */
+
+/* Proof-Logger Functions (7) - SPSC 링버퍼 + io_uring + Gogs HTTP */
+fl_value_t fl_log_configure_builtin(fl_value_t* args, size_t argc);
+fl_value_t fl_log_debug_builtin(fl_value_t* args, size_t argc);
+fl_value_t fl_log_info_builtin(fl_value_t* args, size_t argc);
+fl_value_t fl_log_warn_builtin(fl_value_t* args, size_t argc);
+fl_value_t fl_log_error_builtin(fl_value_t* args, size_t argc);
+fl_value_t fl_log_flush_builtin(fl_value_t* args, size_t argc);
+fl_value_t fl_log_stats_builtin(fl_value_t* args, size_t argc);
+
 /* Register all stdlib functions */
 void fl_stdlib_register(fl_runtime_t* runtime);
 

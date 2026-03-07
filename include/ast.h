@@ -67,6 +67,10 @@ typedef enum {
     NODE_REACTIVE_DECL,      /* reactive let/const/var state = ... */
     NODE_DECORATOR_DECL,     /* @watch, @transaction */
 
+    /* Vector-Vision SIMD Hints (Phase 6) */
+    NODE_VECTORIZE_HINT,     /* @vectorize - SIMD loop annotation */
+    NODE_ALIGNED_DECL,       /* aligned let buf: u8[] = ... */
+
     NODE_TYPE_MAX
 } NodeType;
 
@@ -438,6 +442,24 @@ typedef struct fl_ast_node {
             char name[32];             /* "watch", "transaction", etc */
             struct fl_ast_node *target; /* decorated declaration */
         } decorator_decl;
+
+        /* ================================================================
+           NODE_VECTORIZE_HINT: @vectorize { loop_body } (Phase 6)
+           Compiler emits SIMD-optimized pixel loop code
+           ================================================================ */
+        struct {
+            struct fl_ast_node *body;   /* the loop/block to vectorize */
+            int simd_width;             /* 0=auto, 128=SSE2, 256=AVX2, 512=AVX512 */
+        } vectorize_hint;
+
+        /* ================================================================
+           NODE_ALIGNED_DECL: aligned let buf: u8[] = bytes_new(n) (Phase 6)
+           Forces 32-byte memory alignment for SIMD operations
+           ================================================================ */
+        struct {
+            int align_bytes;            /* alignment (16, 32, 64) */
+            struct fl_ast_node *decl;   /* underlying VAR_DECL */
+        } aligned_decl;
 
     } data;
 
