@@ -1,0 +1,95 @@
+// FreeLang Compiler: Token Types
+// Phase 3-1: Enum으로 토큰 타입을 정의합니다
+
+enum TokenKind {
+  // Literals
+  Number,
+  String,
+  Bool,
+  Null,
+
+  // Identifiers & Keywords
+  Ident,
+  Let,
+  Const,
+  Fn,
+  Return,
+  If,
+  Else,
+  While,
+  For,
+  In,
+  Break,
+  Continue,
+  Print,
+  Println,
+  Try,
+  Catch,
+  Finally,
+  Throw,
+  Import,
+  Export,
+  From,
+  As,
+  Struct,
+  Enum,
+  New,
+  Match,
+
+  // Operators
+  Plus,
+  Minus,
+  Star,
+  Slash,
+  Percent,
+  Eq,
+  Neq,
+  Lt,
+  Gt,
+  Lte,
+  Gte,
+  And,
+  Or,
+  Not,
+  Ampersand,
+  Assign,
+  PlusAssign,
+  MinusAssign,
+  StarAssign,
+  SlashAssign,
+
+  // Delimiters
+  LParen,
+  RParen,
+  LBrace,
+  RBrace,
+  LBracket,
+  RBracket,
+  Comma,
+  Semicolon,
+  Colon,
+  Dot,
+  DotDot,
+  Arrow,
+  FatArrow,
+
+  // Special
+  EOF,
+}
+
+struct Token {
+  kind: TokenKind,
+  value: string,
+  line: i32,
+  col: i32,
+}
+
+// Utility 함수들
+fn token_to_string(t: Token) -> string {
+  t.value
+}
+
+fn is_keyword(word: string) -> bool {
+  // Phase 3에서 구현
+  false
+}

@@ -1,0 +1,103 @@
+// FreeLang Compiler: AST Type Definitions
+// Phase 3-3: 파서가 생성할 AST 노드 타입들을 정의합니다
+
+// 표현식(Expr) 타입
+enum Expr {
+  Number(f64),
+  String(string),
+  Bool(bool),
+  Null,
+  Ident(string),
+
+  // Binary: op, left, right
+  Binary(string, Expr, Expr),
+
+  // Unary: op, expr
+  Unary(string, Expr),
+
+  // Call: callee, args
+  Call(Expr, [Expr]),
+
+  // Index: object, index
+  Index(Expr, Expr),
+
+  // Member: object, property
+  Member(Expr, string),
+
+  // Array: elements
+  Array([Expr]),
+
+  // If: cond, then, else
+  If(Expr, [Stmt], [Stmt]),
+
+  // Match: subject, arms
+  Match(Expr, [MatchArm]),
+}
+
+struct MatchArm {
+  pattern: Expr,
+  body: [Stmt],
+}
+
+// 문장(Stmt) 타입
+enum Stmt {
+  Expr(Expr),
+
+  // Let: name, mutable, init
+  Let(string, bool, Expr),
+
+  // Return: value
+  Return(Expr),
+
+  // Fn: name, params, returnType, body
+  Fn(string, [Param], string, [Stmt]),
+
+  // If: cond, then, else
+  If(Expr, [Stmt], [Stmt]),
+
+  // While: cond, body
+  While(Expr, [Stmt]),
+
+  // For: name, iter, body
+  For(string, Expr, [Stmt]),
+
+  // Print: expr
+  Print(Expr),
+
+  // Struct: name, fields
+  Struct(string, [Field]),
+
+  // Enum: name, variants
+  Enum(string, [Variant]),
+}
+
+struct Param {
+  name: string,
+  typeAnnotation: string,
+}
+
+struct Field {
+  name: string,
+  fieldType: string,
+}
+
+struct Variant {
+  name: string,
+  fields: [string],
+}
+
+// 프로그램
+struct Program {
+  stmts: [Stmt],
+}
+
+// 유틸리티 함수
+fn expr_to_string(e: Expr) -> string {
+  // Phase 3에서 구현
+  ""
+}
+
+fn stmt_to_string(s: Stmt) -> string {
+  // Phase 3에서 구현
+  ""
+}

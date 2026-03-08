@@ -1,0 +1,73 @@
+// FreeLang Compiler: Parser
+// Phase 3-4: 토큰 스트림을 AST로 변환합니다
+
+struct Parser {
+  tokens: [Token],
+  pos: i32,
+}
+
+fn parser_new(tokens: [Token]) -> Parser {
+  Parser {
+    tokens: tokens,
+    pos: 0,
+  }
+}
+
+// 기본 파서 유틸리티
+fn parser_at_eof(p: Parser) -> bool {
+  p.pos >= 0  // Phase 3에서 tokens 배열 길이 체크로 구현
+}
+
+fn parser_peek(p: Parser) -> Token {
+  // p.tokens[p.pos] 반환 (Phase 3에서 구현)
+  Token {
+    kind: TokenKind.EOF,
+    value: "",
+    line: 0,
+    col: 0,
+  }
+}
+
+fn parser_advance(p: Parser) -> Token {
+  // tokens[pos]를 반환하고 pos 증가 (Phase 3에서 구현)
+  parser_peek(p)
+}
+
+fn parser_match(p: Parser, kind: TokenKind) -> bool {
+  // peek()의 kind와 비교 (Phase 3에서 구현)
+  false
+}
+
+fn parser_expect(p: Parser, kind: TokenKind) -> Token {
+  // kind가 맞으면 advance, 아니면 에러 (Phase 3에서 구현)
+  parser_advance(p)
+}
+
+// 파싱 함수들 (스텁)
+fn parse_program(p: Parser) -> Program {
+  Program {
+    stmts: [],
+  }
+}
+
+fn parse_stmt(p: Parser) -> Stmt {
+  // Phase 3에서 구현
+  Stmt.Expr(Expr.Null)
+}
+
+fn parse_expr(p: Parser) -> Expr {
+  // Phase 3에서 구현
+  Expr.Null
+}
+
+// 공개 API
+fn parse(tokens: [Token]) -> Program {
+  let p = parser_new(tokens)
+  parse_program(p)
+}
+
+// 테스트용
+fn parse_test() -> Program {
+  let tokens = []
+  parse(tokens)
+}

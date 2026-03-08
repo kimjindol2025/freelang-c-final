@@ -1,0 +1,23 @@
+// FreeLang Compiler: Main Entry Point
+// Phase 3-6: 컴파일러의 main 함수입니다
+
+// CLI 인자 처리 (Phase 3에서 구현)
+fn compile_file(filepath: string) -> string {
+  // 1. 파일 읽기
+  // 2. tokenize
+  // 3. parse
+  // 4. codegen
+  // 5. C 코드 반환
+  ""
+}
+
+fn main() {
+  // 간단한 테스트:
+  // "let x = 42; print(x)" → C 코드 생성
+
+  let source = "let x = 42"
+  print(source)
+}
+
+// 실행
+main()

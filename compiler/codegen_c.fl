@@ -1,0 +1,72 @@
+// FreeLang Compiler: C Code Generator
+// Phase 3-5: AST를 C 소스코드로 변환합니다
+
+struct CodeGen {
+  lines: [string],
+  indent: i32,
+}
+
+fn codegen_new() -> CodeGen {
+  CodeGen {
+    lines: [],
+    indent: 0,
+  }
+}
+
+fn codegen_emit(cg: CodeGen, text: string) -> CodeGen {
+  // cg.lines에 indent된 text 추가 (Phase 3에서 구현)
+  cg
+}
+
+fn codegen_emit_line(cg: CodeGen, text: string) -> CodeGen {
+  // cg.lines에 text 추가 (Phase 3에서 구현)
+  cg
+}
+
+fn codegen_indent_inc(cg: CodeGen) -> CodeGen {
+  cg
+}
+
+fn codegen_indent_dec(cg: CodeGen) -> CodeGen {
+  cg
+}
+
+// 코드 생성 함수들
+fn codegen_expr(cg: CodeGen, e: Expr) -> string {
+  // Phase 3에서 구현:
+  // - Number → "fl_int(42)"
+  // - String → "fl_string(\"hello\")"
+  // - Binary → "fl_add(left, right)" 등
+  ""
+}
+
+fn codegen_stmt(cg: CodeGen, s: Stmt) -> CodeGen {
+  // Phase 3에서 구현:
+  // - Let → "fl_value *x = ...;"
+  // - Print → "fl_print(...);"
+  // - Fn → 함수 정의
+  cg
+}
+
+fn codegen_program(cg: CodeGen, p: Program) -> CodeGen {
+  // 1. 헤더 추가: #include "fl_runtime.h"
+  // 2. 각 Stmt 처리
+  // 3. main() 함수 추가
+
+  let cg = codegen_emit_line(cg, "#include \"fl_runtime.h\"")
+  cg
+}
+
+// 공개 API
+fn generate(p: Program) -> string {
+  let cg = codegen_new()
+  let cg = codegen_program(cg, p)
+  // cg.lines를 문자열로 조합 (Phase 3에서 구현)
+  ""
+}
+
+// 테스트용
+fn codegen_test() -> string {
+  let p = Program { stmts: [] }
+  generate(p)
+}

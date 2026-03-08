@@ -1,0 +1,46 @@
+// FreeLang Compiler: Lexer
+// Phase 3-2: 문자 스트림을 토큰 스트림으로 변환합니다
+
+// 간단한 문자열 유틸리티
+fn char_at(s: string, idx: i32) -> string {
+  // Phase 3에서 구현 (문자열 인덱싱)
+  ""
+}
+
+fn is_digit(ch: string) -> bool {
+  // Phase 3에서 구현
+  false
+}
+
+fn is_alpha(ch: string) -> bool {
+  // Phase 3에서 구현
+  false
+}
+
+fn is_alphanumeric(ch: string) -> bool {
+  false
+}
+
+fn is_whitespace(ch: string) -> bool {
+  false
+}
+
+// 메인 렉서 함수
+fn tokenize(source: string) -> [Token] {
+  let tokens = []
+  let i = 0
+  let line = 1
+  let col = 1
+
+  // Phase 3에서 구현:
+  // - while 루프로 source 스캔
+  // - 숫자, 문자열, 키워드, 연산자, 구분자 인식
+  // - 토큰 생성 및 배열에 추가
+
+  tokens
+}
+
+// 테스트용 간단한 함수
+fn lex_test() -> [Token] {
+  tokenize("let x = 42")
+}
