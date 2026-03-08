@@ -15,49 +15,383 @@ fn parser_new(tokens: [Token]) -> Parser {
 
 // 기본 파서 유틸리티
 fn parser_at_eof(p: Parser) -> bool {
-  p.pos >= 0  // Phase 3에서 tokens 배열 길이 체크로 구현
+  p.pos >= len(p.tokens)
 }
 
 fn parser_peek(p: Parser) -> Token {
-  // p.tokens[p.pos] 반환 (Phase 3에서 구현)
-  Token {
-    kind: TokenKind.EOF,
-    value: "",
-    line: 0,
-    col: 0,
+  if p.pos < len(p.tokens) {
+    at(p.tokens, p.pos)
+  } else {
+    Token {
+      kind: TokenKind.EOF,
+      value: "",
+      line: 0,
+      col: 0,
+    }
   }
 }
 
 fn parser_advance(p: Parser) -> Token {
-  // tokens[pos]를 반환하고 pos 증가 (Phase 3에서 구현)
-  parser_peek(p)
+  let t = parser_peek(p)
+  p.pos = p.pos + 1
+  t
 }
 
 fn parser_match(p: Parser, kind: TokenKind) -> bool {
-  // peek()의 kind와 비교 (Phase 3에서 구현)
-  false
+  parser_peek(p).kind == kind
 }
 
 fn parser_expect(p: Parser, kind: TokenKind) -> Token {
-  // kind가 맞으면 advance, 아니면 에러 (Phase 3에서 구현)
-  parser_advance(p)
+  let t = parser_peek(p)
+  if t.kind != kind {
+    // Error: expected kind but got t.kind
+    // For now, just advance and return EOF
+    parser_advance(p)
+    Token { kind: TokenKind.EOF, value: "", line: 0, col: 0 }
+  } else {
+    parser_advance(p)
+    t
+  }
 }
 
-// 파싱 함수들 (스텁)
+// 파싱 함수들
 fn parse_program(p: Parser) -> Program {
+  let stmts = []
+  while !parser_at_eof(p) {
+    if parser_peek(p).kind == TokenKind.EOF {
+      break
+    }
+    let s = parse_stmt(p)
+    push(stmts, s)
+  }
   Program {
-    stmts: [],
+    stmts: stmts,
   }
 }
 
 fn parse_stmt(p: Parser) -> Stmt {
-  // Phase 3에서 구현
-  Stmt.Expr(Expr.Null)
+  let kind = parser_peek(p).kind
+
+  if kind == TokenKind.Let {
+    parser_advance(p) // consume 'let'
+    let name_token = parser_expect(p, TokenKind.Ident)
+    parser_expect(p, TokenKind.Eq)
+    let init = parse_expr(p)
+    // consume optional semicolon
+    if parser_peek(p).kind == TokenKind.Semicolon {
+      parser_advance(p)
+    }
+    Stmt.Let(name_token.value, false, init)
+  }
+  else if kind == TokenKind.Fn {
+    parser_advance(p) // consume 'fn'
+    let name_token = parser_expect(p, TokenKind.Ident)
+    parser_expect(p, TokenKind.LParen)
+    let params = parse_params(p)
+    parser_expect(p, TokenKind.RParen)
+
+    // return type (optional, default to "any")
+    let return_type = "any"
+    if parser_peek(p).kind == TokenKind.Colon {
+      parser_advance(p)
+      return_type = parser_expect(p, TokenKind.Ident).value
+    }
+
+    parser_expect(p, TokenKind.LBrace)
+    let body = parse_block(p)
+    parser_expect(p, TokenKind.RBrace)
+
+    Stmt.Fn(name_token.value, params, return_type, body)
+  }
+  else if kind == TokenKind.Print {
+    parser_advance(p) // consume 'print'
+    parser_expect(p, TokenKind.LParen)
+    let expr = parse_expr(p)
+    parser_expect(p, TokenKind.RParen)
+    if parser_peek(p).kind == TokenKind.Semicolon {
+      parser_advance(p)
+    }
+    Stmt.Print(expr)
+  }
+  else if kind == TokenKind.If {
+    parser_advance(p) // consume 'if'
+    let cond = parse_expr(p)
+    parser_expect(p, TokenKind.LBrace)
+    let then_body = parse_block(p)
+    parser_expect(p, TokenKind.RBrace)
+
+    let else_body = []
+    if parser_peek(p).kind == TokenKind.Else {
+      parser_advance(p)
+      parser_expect(p, TokenKind.LBrace)
+      else_body = parse_block(p)
+      parser_expect(p, TokenKind.RBrace)
+    }
+
+    Stmt.If(cond, then_body, else_body)
+  }
+  else if kind == TokenKind.While {
+    parser_advance(p) // consume 'while'
+    let cond = parse_expr(p)
+    parser_expect(p, TokenKind.LBrace)
+    let body = parse_block(p)
+    parser_expect(p, TokenKind.RBrace)
+
+    Stmt.While(cond, body)
+  }
+  else if kind == TokenKind.Return {
+    parser_advance(p) // consume 'return'
+    let value = parse_expr(p)
+    if parser_peek(p).kind == TokenKind.Semicolon {
+      parser_advance(p)
+    }
+    Stmt.Return(value)
+  }
+  else {
+    // expression statement
+    let expr = parse_expr(p)
+    if parser_peek(p).kind == TokenKind.Semicolon {
+      parser_advance(p)
+    }
+    Stmt.Expr(expr)
+  }
+}
+
+fn parse_params(p: Parser) -> [Param] {
+  let params = []
+
+  if parser_peek(p).kind == TokenKind.RParen {
+    params
+  } else {
+    while true {
+      let name = parser_expect(p, TokenKind.Ident).value
+      parser_expect(p, TokenKind.Colon)
+      let param_type = parser_expect(p, TokenKind.Ident).value
+
+      push(params, Param { name: name, typeAnnotation: param_type })
+
+      if parser_peek(p).kind != TokenKind.Comma {
+        break
+      }
+      parser_advance(p)
+    }
+    params
+  }
+}
+
+fn parse_block(p: Parser) -> [Stmt] {
+  let stmts = []
+
+  while !parser_at_eof(p) && parser_peek(p).kind != TokenKind.RBrace {
+    let s = parse_stmt(p)
+    push(stmts, s)
+  }
+
+  stmts
 }
 
 fn parse_expr(p: Parser) -> Expr {
-  // Phase 3에서 구현
-  Expr.Null
+  parse_logical_or(p)
+}
+
+fn parse_logical_or(p: Parser) -> Expr {
+  let left = parse_logical_and(p)
+
+  while parser_peek(p).value == "|" {
+    let op = parser_advance(p).value
+    let right = parse_logical_and(p)
+    left = Expr.Binary(op, left, right)
+  }
+
+  left
+}
+
+fn parse_logical_and(p: Parser) -> Expr {
+  let left = parse_equality(p)
+
+  while parser_peek(p).value == "&" {
+    let op = parser_advance(p).value
+    let right = parse_equality(p)
+    left = Expr.Binary(op, left, right)
+  }
+
+  left
+}
+
+fn parse_equality(p: Parser) -> Expr {
+  let left = parse_comparison(p)
+
+  while parser_peek(p).kind == TokenKind.EqEq || parser_peek(p).kind == TokenKind.NotEq {
+    let op = parser_advance(p).value
+    let right = parse_comparison(p)
+    left = Expr.Binary(op, left, right)
+  }
+
+  left
+}
+
+fn parse_comparison(p: Parser) -> Expr {
+  let left = parse_addition(p)
+
+  while parser_peek(p).kind == TokenKind.Less ||
+        parser_peek(p).kind == TokenKind.LessEq ||
+        parser_peek(p).kind == TokenKind.Greater ||
+        parser_peek(p).kind == TokenKind.GreaterEq {
+    let op = parser_advance(p).value
+    let right = parse_addition(p)
+    left = Expr.Binary(op, left, right)
+  }
+
+  left
+}
+
+fn parse_addition(p: Parser) -> Expr {
+  let left = parse_multiplication(p)
+
+  while parser_peek(p).kind == TokenKind.Plus || parser_peek(p).kind == TokenKind.Minus {
+    let op = parser_advance(p).value
+    let right = parse_multiplication(p)
+    left = Expr.Binary(op, left, right)
+  }
+
+  left
+}
+
+fn parse_multiplication(p: Parser) -> Expr {
+  let left = parse_unary(p)
+
+  while parser_peek(p).kind == TokenKind.Star || parser_peek(p).kind == TokenKind.Slash {
+    let op = parser_advance(p).value
+    let right = parse_unary(p)
+    left = Expr.Binary(op, left, right)
+  }
+
+  left
+}
+
+fn parse_unary(p: Parser) -> Expr {
+  if parser_peek(p).kind == TokenKind.Bang || parser_peek(p).kind == TokenKind.Minus {
+    let op = parser_advance(p).value
+    let expr = parse_unary(p)
+    Expr.Unary(op, expr)
+  } else {
+    parse_postfix(p)
+  }
+}
+
+fn parse_postfix(p: Parser) -> Expr {
+  let expr = parse_primary(p)
+
+  while true {
+    if parser_peek(p).kind == TokenKind.LParen {
+      parser_advance(p)
+      let args = parse_args(p)
+      parser_expect(p, TokenKind.RParen)
+      expr = Expr.Call(expr, args)
+    }
+    else if parser_peek(p).kind == TokenKind.LBracket {
+      parser_advance(p)
+      let index = parse_expr(p)
+      parser_expect(p, TokenKind.RBracket)
+      expr = Expr.Index(expr, index)
+    }
+    else if parser_peek(p).kind == TokenKind.Dot {
+      parser_advance(p)
+      let prop = parser_expect(p, TokenKind.Ident).value
+      expr = Expr.Member(expr, prop)
+    }
+    else {
+      break
+    }
+  }
+
+  expr
+}
+
+fn parse_primary(p: Parser) -> Expr {
+  let kind = parser_peek(p).kind
+
+  if kind == TokenKind.Number {
+    let val = parser_advance(p).value
+    // Convert string to f64 (simplified)
+    Expr.Number(0.0) // TODO: proper string-to-number conversion
+  }
+  else if kind == TokenKind.String {
+    let val = parser_advance(p).value
+    Expr.String(val)
+  }
+  else if kind == TokenKind.Bool {
+    let val = parser_advance(p).value
+    Expr.Bool(val == "true")
+  }
+  else if kind == TokenKind.Null {
+    parser_advance(p)
+    Expr.Null
+  }
+  else if kind == TokenKind.Ident {
+    let val = parser_advance(p).value
+    Expr.Ident(val)
+  }
+  else if kind == TokenKind.LParen {
+    parser_advance(p)
+    let expr = parse_expr(p)
+    parser_expect(p, TokenKind.RParen)
+    expr
+  }
+  else if kind == TokenKind.LBracket {
+    parser_advance(p)
+    let elements = []
+
+    if parser_peek(p).kind != TokenKind.RBracket {
+      while true {
+        push(elements, parse_expr(p))
+        if parser_peek(p).kind != TokenKind.Comma {
+          break
+        }
+        parser_advance(p)
+      }
+    }
+
+    parser_expect(p, TokenKind.RBracket)
+    Expr.Array(elements)
+  }
+  else if kind == TokenKind.If {
+    parser_advance(p)
+    let cond = parse_expr(p)
+    parser_expect(p, TokenKind.LBrace)
+    let then_body = parse_block(p)
+    parser_expect(p, TokenKind.RBrace)
+
+    let else_body = []
+    if parser_peek(p).kind == TokenKind.Else {
+      parser_advance(p)
+      parser_expect(p, TokenKind.LBrace)
+      else_body = parse_block(p)
+      parser_expect(p, TokenKind.RBrace)
+    }
+
+    Expr.If(cond, then_body, else_body)
+  }
+  else {
+    Expr.Null
+  }
+}
+
+fn parse_args(p: Parser) -> [Expr] {
+  let args = []
+
+  if parser_peek(p).kind == TokenKind.RParen {
+    args
+  } else {
+    while true {
+      push(args, parse_expr(p))
+      if parser_peek(p).kind != TokenKind.Comma {
+        break
+      }
+      parser_advance(p)
+    }
+    args
+  }
 }
 
 // 공개 API

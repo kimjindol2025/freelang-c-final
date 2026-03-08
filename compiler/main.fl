@@ -4,19 +4,41 @@
 // CLI 인자 처리 (Phase 3에서 구현)
 fn compile_file(filepath: string) -> string {
   // 1. 파일 읽기
-  // 2. tokenize
-  // 3. parse
-  // 4. codegen
-  // 5. C 코드 반환
-  ""
+  let source = file_read(filepath)
+  if source == "" {
+    "error: cannot read file"
+  } else {
+    // 2. tokenize
+    let tokens = tokenize(source)
+
+    // 3. parse
+    let ast = parse(tokens)
+
+    // 4. codegen
+    let c_code = generate(ast)
+
+    // 5. C 코드 반환
+    c_code
+  }
 }
 
 fn main() {
   // 간단한 테스트:
   // "let x = 42; print(x)" → C 코드 생성
 
-  let source = "let x = 42"
-  print(source)
+  let source = "let x = 42\nprint(x)"
+
+  // Tokenize
+  let tokens = tokenize(source)
+
+  // Parse
+  let ast = parse(tokens)
+
+  // Codegen
+  let c_code = generate(ast)
+
+  // Print result
+  print(c_code)
 }
 
 // 실행

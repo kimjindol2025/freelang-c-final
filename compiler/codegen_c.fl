@@ -13,56 +13,245 @@ fn codegen_new() -> CodeGen {
   }
 }
 
+fn repeat_str(s: string, n: i32) -> string {
+  let result = ""
+  let i = 0
+  while i < n {
+    result = result + s
+    i = i + 1
+  }
+  result
+}
+
+fn codegen_indent_str(indent: i32) -> string {
+  repeat_str("  ", indent)
+}
+
 fn codegen_emit(cg: CodeGen, text: string) -> CodeGen {
-  // cg.lines에 indent된 text 추가 (Phase 3에서 구현)
+  let indent_str = codegen_indent_str(cg.indent)
+  push(cg.lines, indent_str + text)
   cg
 }
 
 fn codegen_emit_line(cg: CodeGen, text: string) -> CodeGen {
-  // cg.lines에 text 추가 (Phase 3에서 구현)
-  cg
+  codegen_emit(cg, text)
 }
 
 fn codegen_indent_inc(cg: CodeGen) -> CodeGen {
+  cg.indent = cg.indent + 1
   cg
 }
 
 fn codegen_indent_dec(cg: CodeGen) -> CodeGen {
+  if cg.indent > 0 {
+    cg.indent = cg.indent - 1
+  }
   cg
 }
 
-// 코드 생성 함수들
+// 표현식 코드 생성 - match 사용
 fn codegen_expr(cg: CodeGen, e: Expr) -> string {
-  // Phase 3에서 구현:
-  // - Number → "fl_int(42)"
-  // - String → "fl_string(\"hello\")"
-  // - Binary → "fl_add(left, right)" 등
-  ""
+  match e {
+    Expr.Number(n) => {
+      "fl_int((int64_t)" + str(n) + ")"
+    }
+    Expr.String(s) => {
+      "fl_string(\"" + s + "\")"
+    }
+    Expr.Bool(b) => {
+      if b { "fl_bool(1)" } else { "fl_bool(0)" }
+    }
+    Expr.Null => {
+      "fl_null()"
+    }
+    Expr.Ident(name) => {
+      name
+    }
+    Expr.Binary(op, left, right) => {
+      let left_code = codegen_expr(cg, left)
+      let right_code = codegen_expr(cg, right)
+      if op == "+" {
+        "fl_add(" + left_code + ", " + right_code + ")"
+      } else if op == "-" {
+        "fl_sub(" + left_code + ", " + right_code + ")"
+      } else if op == "*" {
+        "fl_mul(" + left_code + ", " + right_code + ")"
+      } else if op == "/" {
+        "fl_div(" + left_code + ", " + right_code + ")"
+      } else if op == "==" {
+        "fl_eq(" + left_code + ", " + right_code + ")"
+      } else if op == "!=" {
+        "fl_neq(" + left_code + ", " + right_code + ")"
+      } else if op == "<" {
+        "fl_lt(" + left_code + ", " + right_code + ")"
+      } else if op == "<=" {
+        "fl_lte(" + left_code + ", " + right_code + ")"
+      } else if op == ">" {
+        "fl_gt(" + left_code + ", " + right_code + ")"
+      } else if op == ">=" {
+        "fl_gte(" + left_code + ", " + right_code + ")"
+      } else {
+        "fl_null()"
+      }
+    }
+    Expr.Unary(op, expr) => {
+      let expr_code = codegen_expr(cg, expr)
+      if op == "!" {
+        "fl_not(" + expr_code + ")"
+      } else if op == "-" {
+        "fl_neg(" + expr_code + ")"
+      } else {
+        expr_code
+      }
+    }
+    Expr.Call(callee, args) => {
+      let callee_code = codegen_expr(cg, callee)
+      let args_code = ""
+      let i = 0
+      while i < len(args) {
+        if i > 0 {
+          args_code = args_code + ", "
+        }
+        args_code = args_code + codegen_expr(cg, at(args, i))
+        i = i + 1
+      }
+      callee_code + "(" + args_code + ")"
+    }
+    Expr.Array(elements) => {
+      "fl_array_new()"
+    }
+    _ => {
+      "fl_null()"
+    }
+  }
 }
 
+// 문장 코드 생성
 fn codegen_stmt(cg: CodeGen, s: Stmt) -> CodeGen {
-  // Phase 3에서 구현:
-  // - Let → "fl_value *x = ...;"
-  // - Print → "fl_print(...);"
-  // - Fn → 함수 정의
-  cg
+  match s {
+    Stmt.Expr(e) => {
+      let expr_code = codegen_expr(cg, e)
+      codegen_emit_line(cg, expr_code + ";")
+    }
+    Stmt.Let(name, mutable, init) => {
+      let init_code = codegen_expr(cg, init)
+      codegen_emit_line(cg, "fl_value " + name + " = " + init_code + ";")
+    }
+    Stmt.Print(expr) => {
+      let expr_code = codegen_expr(cg, expr)
+      codegen_emit_line(cg, "fl_print(" + expr_code + ");")
+    }
+    Stmt.Fn(name, params, return_type, body) => {
+      let sig = "fl_value " + name + "() {"
+      cg = codegen_emit_line(cg, sig)
+      cg = codegen_indent_inc(cg)
+      let i = 0
+      while i < len(body) {
+        cg = codegen_stmt(cg, at(body, i))
+        i = i + 1
+      }
+      cg = codegen_indent_dec(cg)
+      codegen_emit_line(cg, "}")
+    }
+    Stmt.If(cond, then_body, else_body) => {
+      let cond_code = codegen_expr(cg, cond)
+      cg = codegen_emit_line(cg, "if (fl_is_truthy(" + cond_code + ")) {")
+      cg = codegen_indent_inc(cg)
+      let i = 0
+      while i < len(then_body) {
+        cg = codegen_stmt(cg, at(then_body, i))
+        i = i + 1
+      }
+      cg = codegen_indent_dec(cg)
+      if len(else_body) > 0 {
+        cg = codegen_emit_line(cg, "} else {")
+        cg = codegen_indent_inc(cg)
+        let j = 0
+        while j < len(else_body) {
+          cg = codegen_stmt(cg, at(else_body, j))
+          j = j + 1
+        }
+        cg = codegen_indent_dec(cg)
+      }
+      codegen_emit_line(cg, "}")
+    }
+    Stmt.While(cond, body) => {
+      let cond_code = codegen_expr(cg, cond)
+      cg = codegen_emit_line(cg, "while (fl_is_truthy(" + cond_code + ")) {")
+      cg = codegen_indent_inc(cg)
+      let i = 0
+      while i < len(body) {
+        cg = codegen_stmt(cg, at(body, i))
+        i = i + 1
+      }
+      cg = codegen_indent_dec(cg)
+      codegen_emit_line(cg, "}")
+    }
+    Stmt.Return(expr) => {
+      let expr_code = codegen_expr(cg, expr)
+      codegen_emit_line(cg, "return " + expr_code + ";")
+    }
+    _ => {
+      cg
+    }
+  }
 }
 
 fn codegen_program(cg: CodeGen, p: Program) -> CodeGen {
-  // 1. 헤더 추가: #include "fl_runtime.h"
-  // 2. 각 Stmt 처리
-  // 3. main() 함수 추가
+  cg = codegen_emit_line(cg, "#include \"fl_runtime.h\"")
+  cg = codegen_emit_line(cg, "")
 
-  let cg = codegen_emit_line(cg, "#include \"fl_runtime.h\"")
+  let i = 0
+  let main_stmts = []
+  let functions = []
+
+  while i < len(p.stmts) {
+    let stmt = at(p.stmts, i)
+    match stmt {
+      Stmt.Fn(_, _, _, _) => {
+        push(functions, stmt)
+      }
+      _ => {
+        push(main_stmts, stmt)
+      }
+    }
+    i = i + 1
+  }
+
+  let j = 0
+  while j < len(functions) {
+    cg = codegen_stmt(cg, at(functions, j))
+    cg = codegen_emit_line(cg, "")
+    j = j + 1
+  }
+
+  cg = codegen_emit_line(cg, "int main() {")
+  cg = codegen_indent_inc(cg)
+  let k = 0
+  while k < len(main_stmts) {
+    cg = codegen_stmt(cg, at(main_stmts, k))
+    k = k + 1
+  }
+  cg = codegen_emit_line(cg, "return 0;")
+  cg = codegen_indent_dec(cg)
+  cg = codegen_emit_line(cg, "}")
+
   cg
 }
 
 // 공개 API
 fn generate(p: Program) -> string {
   let cg = codegen_new()
-  let cg = codegen_program(cg, p)
-  // cg.lines를 문자열로 조합 (Phase 3에서 구현)
-  ""
+  cg = codegen_program(cg, p)
+
+  let result = ""
+  let i = 0
+  while i < len(cg.lines) {
+    result = result + at(cg.lines, i) + "\n"
+    i = i + 1
+  }
+
+  result
 }
 
 // 테스트용
