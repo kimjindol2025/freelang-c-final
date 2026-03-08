@@ -179,19 +179,15 @@ fl_value* fl_struct_new(const char *struct_name) {
 
 void fl_struct_set_field(fl_value *s, const char *field, fl_value *v) {
   if (s->tag != FL_STRUCT) return;
-  fl_map_entry *buckets_array = (fl_map_entry*)s->structval->fields;
-  fl_map temp_map;
-  temp_map.buckets = (fl_map_entry**)buckets_array;
-  temp_map.bucket_count = 16;
   fl_value temp_val;
   temp_val.tag = FL_MAP;
-  temp_val.mapval = &temp_map;
+  temp_val.mapval = s->structval->fields;
   fl_map_set(&temp_val, field, v);
 }
 
 fl_value* fl_struct_get_field(fl_value *s, const char *field) {
   if (s->tag != FL_STRUCT) return fl_null();
-  fl_map temp_val;
+  fl_value temp_val;
   temp_val.tag = FL_MAP;
   temp_val.mapval = s->structval->fields;
   return fl_map_get(&temp_val, field);
