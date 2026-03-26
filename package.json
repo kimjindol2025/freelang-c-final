@@ -1,0 +1,13 @@
+{
+  "name": "freelang-c-final",
+  "version": "1.0.0",
+  "description": "FreeLang Project",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": ["freelang"],
+  "license": "MIT"
+}
