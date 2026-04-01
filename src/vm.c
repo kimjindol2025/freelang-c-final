@@ -757,6 +757,22 @@ static void call_builtin(fl_vm_t *vm, const char *name, int argc) {
     } else if (strcmp(name, "autodoc_count") == 0) {
         fl_value_t null_args; null_args.type = FL_TYPE_NULL;
         fl_vm_push(vm, fl_autodoc_count_builtin(&null_args, 0));
+    /* Phase 13: Native-Body-Parser - JSON 파싱 엔진 */
+    } else if (strcmp(name, "json_parse") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_json_parse_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "http_body_read") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_http_body_read_builtin(args, (size_t)argc));
+        free(args);
+    } else if (strcmp(name, "http_body_parse") == 0) {
+        fl_value_t* args = malloc((size_t)argc * sizeof(fl_value_t));
+        for (int i = 0; i < argc; i++) args[argc - 1 - i] = fl_vm_pop(vm);
+        fl_vm_push(vm, fl_http_body_parse_builtin(args, (size_t)argc));
+        free(args);
     } else {
         /* Unknown builtin - push null */
         fl_value_t ret;

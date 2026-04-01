@@ -98,6 +98,32 @@ static ASTNode* parse_var_decl(fl_parser_t *p) {
 }
 
 static ASTNode* parse_fn_decl(fl_parser_t *p) {
+    /* Phase 13: Check for @json_body annotation */
+    int has_json_body = 0;
+    char json_body_param[256] = "";
+
+    if (check(p, TOK_AT)) {
+        advance(p);  // consume @
+        if (check(p, TOK_IDENT)) {
+            Token decorator_tok = current_token(p);
+            if (strcmp(decorator_tok.value, "json_body") == 0) {
+                has_json_body = 1;
+                advance(p);  // consume "json_body"
+
+                /* Parse parameter name: @json_body(req) */
+                if (match(p, TOK_LPAREN)) {
+                    if (check(p, TOK_IDENT)) {
+                        Token param_tok = advance(p);
+                        strncpy(json_body_param, param_tok.value, 255);
+                    }
+                    match(p, TOK_RPAREN);
+                }
+            } else {
+                advance(p);  /* Skip unknown decorator */
+            }
+        }
+    }
+
     Token fn_tok = advance(p);
     Token name_tok = advance(p);
     if (!match(p, TOK_LPAREN)) return NULL;
@@ -156,6 +182,8 @@ static ASTNode* parse_fn_decl(fl_parser_t *p) {
         node->data.fn_decl.param_names = param_names;
         node->data.fn_decl.param_count = param_count;
         node->data.fn_decl.body = body;
+        node->data.fn_decl.has_json_body_annotation = has_json_body;
+        strncpy(node->data.fn_decl.json_body_param, json_body_param, 255);
         node->line = fn_tok.line;
         node->col = fn_tok.col;
     }

@@ -193,6 +193,17 @@ fl_value_t fl_autodoc_routes_json_builtin(fl_value_t* args, size_t argc);
 /* autodoc_count() -> int (등록된 라우트 수) */
 fl_value_t fl_autodoc_count_builtin(fl_value_t* args, size_t argc);
 
+/* ============================================================================
+   PHASE 13: Native-Body-Parser — JSON 파싱 엔진
+   express body-parser 대체 (외부 의존성 0)
+   ============================================================================ */
+/* json_parse(string) -> object/array/value (JSON 파싱) */
+fl_value_t fl_json_parse_builtin(fl_value_t* args, size_t argc);
+/* http_body_read(socket_fd, max_size) -> string (HTTP 본문 읽기) */
+fl_value_t fl_http_body_read_builtin(fl_value_t* args, size_t argc);
+/* http_body_parse(request_body_string) -> object (HTTP 본문 파싱) */
+fl_value_t fl_http_body_parse_builtin(fl_value_t* args, size_t argc);
+
 /* Register all stdlib functions */
 void fl_stdlib_register(fl_runtime_t* runtime);
 

@@ -1735,6 +1735,11 @@ void fl_stdlib_register(fl_runtime_t* runtime) {
     fl_runtime_register_builtin(runtime, "autodoc_html",        fl_autodoc_html_builtin);
     fl_runtime_register_builtin(runtime, "autodoc_routes_json", fl_autodoc_routes_json_builtin);
     fl_runtime_register_builtin(runtime, "autodoc_count",       fl_autodoc_count_builtin);
+
+    /* Phase 13: Native-Body-Parser Functions - express body-parser 대체 */
+    fl_runtime_register_builtin(runtime, "json_parse",       fl_json_parse_builtin);
+    fl_runtime_register_builtin(runtime, "http_body_read",   fl_http_body_read_builtin);
+    fl_runtime_register_builtin(runtime, "http_body_parse",  fl_http_body_parse_builtin);
 }
 
 /* ============================================================================
@@ -3197,4 +3202,260 @@ fl_value_t fl_autodoc_routes_json_builtin(fl_value_t* args, size_t argc) {
 fl_value_t fl_autodoc_count_builtin(fl_value_t* args, size_t argc) {
     (void)args; (void)argc;
     return fl_new_int(fl_autodoc_global.count);
+}
+
+/* ============================================================================
+   PHASE 13: Native-Body-Parser — JSON 파싱 엔진
+   express body-parser 대체 (외부 의존성 0)
+   ============================================================================ */
+
+/* Forward declaration */
+static fl_value_t fl_json_parse_value(const char *json, size_t *pos, size_t len);
+
+/* Skip whitespace */
+static void fl_json_skip_whitespace(const char *json, size_t *pos, size_t len) {
+    while (*pos < len && (json[*pos] == ' ' || json[*pos] == '\t' ||
+                          json[*pos] == '\n' || json[*pos] == '\r')) {
+        (*pos)++;
+    }
+}
+
+/* Parse JSON string: "abc" -> string */
+static fl_value_t fl_json_parse_string(const char *json, size_t *pos, size_t len) {
+    if (*pos >= len || json[*pos] != '"') return fl_new_null();
+    (*pos)++;  /* consume opening quote */
+
+    char buffer[4096] = "";
+    size_t buf_len = 0;
+
+    while (*pos < len && json[*pos] != '"' && buf_len < 4095) {
+        if (json[*pos] == '\\' && (*pos + 1) < len) {
+            (*pos)++;  /* consume backslash */
+            switch (json[*pos]) {
+                case '"':  buffer[buf_len++] = '"'; break;
+                case '\\': buffer[buf_len++] = '\\'; break;
+                case '/':  buffer[buf_len++] = '/'; break;
+                case 'b':  buffer[buf_len++] = '\b'; break;
+                case 'f':  buffer[buf_len++] = '\f'; break;
+                case 'n':  buffer[buf_len++] = '\n'; break;
+                case 'r':  buffer[buf_len++] = '\r'; break;
+                case 't':  buffer[buf_len++] = '\t'; break;
+                default:   buffer[buf_len++] = json[*pos]; break;
+            }
+        } else {
+            buffer[buf_len++] = json[*pos];
+        }
+        (*pos)++;
+    }
+
+    if (*pos < len && json[*pos] == '"') {
+        (*pos)++;  /* consume closing quote */
+    }
+    buffer[buf_len] = '\0';
+
+    return fl_new_string(buffer);
+}
+
+/* Parse JSON number: 123, -45.6, 1e10 */
+static fl_value_t fl_json_parse_number(const char *json, size_t *pos, size_t len) {
+    char buffer[256] = "";
+    size_t buf_len = 0;
+
+    /* Sign */
+    if (*pos < len && json[*pos] == '-') {
+        buffer[buf_len++] = json[*pos++];
+    }
+
+    /* Digits before decimal */
+    while (*pos < len && isdigit(json[*pos]) && buf_len < 255) {
+        buffer[buf_len++] = json[*pos++];
+    }
+
+    /* Decimal part */
+    if (*pos < len && json[*pos] == '.' && buf_len < 255) {
+        buffer[buf_len++] = json[*pos++];
+        while (*pos < len && isdigit(json[*pos]) && buf_len < 255) {
+            buffer[buf_len++] = json[*pos++];
+        }
+    }
+
+    /* Exponent part */
+    if (*pos < len && (json[*pos] == 'e' || json[*pos] == 'E') && buf_len < 255) {
+        buffer[buf_len++] = json[*pos++];
+        if (*pos < len && (json[*pos] == '+' || json[*pos] == '-') && buf_len < 255) {
+            buffer[buf_len++] = json[*pos++];
+        }
+        while (*pos < len && isdigit(json[*pos]) && buf_len < 255) {
+            buffer[buf_len++] = json[*pos++];
+        }
+    }
+
+    buffer[buf_len] = '\0';
+
+    /* Check if it's a float */
+    if (strchr(buffer, '.') || strchr(buffer, 'e') || strchr(buffer, 'E')) {
+        return fl_new_float(strtod(buffer, NULL));
+    } else {
+        return fl_new_int((fl_int)strtoll(buffer, NULL, 10));
+    }
+}
+
+/* Parse JSON array: [1, "hello", true] */
+static fl_value_t fl_json_parse_array(const char *json, size_t *pos, size_t len) {
+    if (*pos >= len || json[*pos] != '[') return fl_new_null();
+    (*pos)++;  /* consume [ */
+
+    fl_value_t arr = fl_new_array(10);
+
+    fl_json_skip_whitespace(json, pos, len);
+
+    while (*pos < len && json[*pos] != ']') {
+        fl_value_t elem = fl_json_parse_value(json, pos, len);
+        if (arr.data.array_val && arr.data.array_val->size < arr.data.array_val->capacity) {
+            arr.data.array_val->elements[arr.data.array_val->size++] = elem;
+        }
+
+        fl_json_skip_whitespace(json, pos, len);
+
+        if (*pos < len && json[*pos] == ',') {
+            (*pos)++;  /* consume , */
+            fl_json_skip_whitespace(json, pos, len);
+        } else if (*pos < len && json[*pos] != ']') {
+            break;
+        }
+    }
+
+    if (*pos < len && json[*pos] == ']') {
+        (*pos)++;  /* consume ] */
+    }
+
+    return arr;
+}
+
+/* Parse JSON object: {"name": "Kim", "age": 30} */
+static fl_value_t fl_json_parse_object(const char *json, size_t *pos, size_t len) {
+    if (*pos >= len || json[*pos] != '{') return fl_new_null();
+    (*pos)++;  /* consume { */
+
+    fl_value_t obj = fl_new_object();
+
+    fl_json_skip_whitespace(json, pos, len);
+
+    while (*pos < len && json[*pos] != '}') {
+        fl_json_skip_whitespace(json, pos, len);
+
+        /* Parse key (must be string) */
+        if (*pos >= len || json[*pos] != '"') break;
+        fl_value_t key_val = fl_json_parse_string(json, pos, len);
+        const char *key = key_val.data.string_val;
+
+        fl_json_skip_whitespace(json, pos, len);
+
+        /* Expect colon */
+        if (*pos >= len || json[*pos] != ':') {
+            free(key_val.data.string_val);
+            break;
+        }
+        (*pos)++;  /* consume : */
+
+        fl_json_skip_whitespace(json, pos, len);
+
+        /* Parse value */
+        fl_value_t val = fl_json_parse_value(json, pos, len);
+
+        /* Insert into object */
+        if (obj.data.object_val && obj.data.object_val->size < obj.data.object_val->capacity) {
+            obj.data.object_val->keys[obj.data.object_val->size] =
+                (char*)malloc(strlen(key) + 1);
+            strcpy(obj.data.object_val->keys[obj.data.object_val->size], key);
+            obj.data.object_val->values[obj.data.object_val->size] = val;
+            obj.data.object_val->size++;
+        }
+
+        free(key_val.data.string_val);
+
+        fl_json_skip_whitespace(json, pos, len);
+
+        if (*pos < len && json[*pos] == ',') {
+            (*pos)++;  /* consume , */
+            fl_json_skip_whitespace(json, pos, len);
+        } else if (*pos < len && json[*pos] != '}') {
+            break;
+        }
+    }
+
+    if (*pos < len && json[*pos] == '}') {
+        (*pos)++;  /* consume } */
+    }
+
+    return obj;
+}
+
+/* Main JSON parser: value -> int/float/string/bool/null/array/object */
+static fl_value_t fl_json_parse_value(const char *json, size_t *pos, size_t len) {
+    fl_json_skip_whitespace(json, pos, len);
+
+    if (*pos >= len) return fl_new_null();
+
+    char ch = json[*pos];
+
+    if (ch == '"') {
+        return fl_json_parse_string(json, pos, len);
+    } else if (ch == '{') {
+        return fl_json_parse_object(json, pos, len);
+    } else if (ch == '[') {
+        return fl_json_parse_array(json, pos, len);
+    } else if (ch == 't') {
+        /* true */
+        if (*pos + 3 < len && strncmp(&json[*pos], "true", 4) == 0) {
+            *pos += 4;
+            return fl_new_bool(1);
+        }
+    } else if (ch == 'f') {
+        /* false */
+        if (*pos + 4 < len && strncmp(&json[*pos], "false", 5) == 0) {
+            *pos += 5;
+            return fl_new_bool(0);
+        }
+    } else if (ch == 'n') {
+        /* null */
+        if (*pos + 3 < len && strncmp(&json[*pos], "null", 4) == 0) {
+            *pos += 4;
+            return fl_new_null();
+        }
+    } else if (ch == '-' || isdigit(ch)) {
+        return fl_json_parse_number(json, pos, len);
+    }
+
+    return fl_new_null();
+}
+
+/* Public builtin: json_parse(string) -> object/array/value */
+fl_value_t fl_json_parse_builtin(fl_value_t* args, size_t argc) {
+    if (argc < 1 || args[0].type != FL_TYPE_STRING) {
+        return fl_new_null();
+    }
+
+    const char *json_str = args[0].data.string_val;
+    size_t len = strlen(json_str);
+    size_t pos = 0;
+
+    return fl_json_parse_value(json_str, &pos, len);
+}
+
+/* Public builtin: http_body_read(socket_fd, max_size) -> string */
+fl_value_t fl_http_body_read_builtin(fl_value_t* args, size_t argc) {
+    /* Simplified: in real implementation, would read from socket_fd */
+    /* For now, returns empty string (actual HTTP reading handled elsewhere) */
+    (void)args; (void)argc;
+    return fl_new_string("");
+}
+
+/* Public builtin: http_body_parse(request_body_string) -> object */
+fl_value_t fl_http_body_parse_builtin(fl_value_t* args, size_t argc) {
+    if (argc < 1 || args[0].type != FL_TYPE_STRING) {
+        return fl_new_null();
+    }
+    /* Delegates to json_parse */
+    return fl_json_parse_builtin(args, argc);
 }

@@ -141,6 +141,9 @@ typedef struct fl_ast_node {
             char api_summary[512];     /* summary description */
             char api_tag[128];         /* grouping tag */
             char api_returns[64];      /* return type hint */
+            /* Phase 13: Native-Body-Parser - @json_body annotation */
+            int has_json_body_annotation;  /* 1 if @json_body decorator present */
+            char json_body_param[256];     /* parameter name to inject parsed JSON */
         } fn_decl;
 
         /* ================================================================

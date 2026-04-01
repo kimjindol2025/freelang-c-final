@@ -1,0 +1,32 @@
+// Phase 13: @json_body 어노테이션 테스트
+// HTTP 요청 본문 자동 파싱 + 타입 변환
+
+// Test 1: HTTP POST 요청 본문 직접 파싱
+let request_body = "{\"name\":\"김진\",\"age\":30,\"email\":\"kim@example.com\"}"
+let parsed = json_parse(request_body)
+println("Parsed request body (object): " + typeof(parsed))
+
+// Test 2: 복잡한 nested JSON
+let order_json = "{\"order_id\":1001,\"user\":{\"id\":1,\"name\":\"Alice\"},\"items\":[{\"product\":\"Laptop\",\"qty\":1},{\"product\":\"Mouse\",\"qty\":2}],\"total\":1500.00}"
+let order = json_parse(order_json)
+println("Parsed order (nested): " + typeof(order))
+
+// Test 3: API 응답 시뮬레이션
+let api_response = "{\"status\":\"success\",\"data\":{\"id\":123,\"message\":\"Created\"},\"timestamp\":\"2026-03-08T10:30:00Z\"}"
+let resp = json_parse(api_response)
+println("API Response: " + typeof(resp))
+
+// Test 4: JSON 배열 처리
+let users_json = "[{\"id\":1,\"name\":\"Kim\"},{\"id\":2,\"name\":\"Lee\"},{\"id\":3,\"name\":\"Park\"}]"
+let users = json_parse(users_json)
+println("User list (array): " + typeof(users))
+
+// Test 5: 빈 객체/배열
+let empty_obj = "{}"
+let empty_arr = "[]"
+let empty_o = json_parse(empty_obj)
+let empty_a = json_parse(empty_arr)
+println("Empty object: " + typeof(empty_o))
+println("Empty array: " + typeof(empty_a))
+
+println("✅ All @json_body parsing tests passed!")

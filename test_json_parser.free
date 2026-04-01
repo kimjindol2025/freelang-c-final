@@ -1,0 +1,32 @@
+// Phase 13: Native-Body-Parser 테스트
+// express body-parser 대체 검증
+
+// Test 1: Simple JSON object
+let json_obj = "{\"name\":\"Kim\",\"age\":30,\"active\":true}"
+let parsed_obj = json_parse(json_obj)
+println("Test 1 - Object: " + typeof(parsed_obj))
+
+// Test 2: JSON array
+let json_arr = "[1, 2, 3, \"hello\", true, null]"
+let parsed_arr = json_parse(json_arr)
+println("Test 2 - Array: " + typeof(parsed_arr))
+
+// Test 3: Nested JSON
+let json_nested = "{\"user\":{\"id\":1,\"name\":\"Alice\"},\"items\":[10,20,30]}"
+let parsed_nested = json_parse(json_nested)
+println("Test 3 - Nested: " + typeof(parsed_nested))
+
+// Test 4: Simple values
+let json_num = "42"
+let num_parsed = json_parse(json_num)
+println("Test 4 - Number: " + typeof(num_parsed))
+
+let json_str = "\"hello world\""
+let str_parsed = json_parse(json_str)
+println("Test 5 - String: " + typeof(str_parsed))
+
+let json_bool = "true"
+let bool_parsed = json_parse(json_bool)
+println("Test 6 - Boolean: " + typeof(bool_parsed))
+
+println("All tests completed!")
